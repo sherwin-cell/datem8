@@ -142,7 +142,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
 
   String _formatTime(int? timestamp) {
     if (timestamp == null) return "";
-    return DateFormat('hh:mm a')
+    return DateFormat('MMM dd, yyyy hh:mm a')
         .format(DateTime.fromMillisecondsSinceEpoch(timestamp));
   }
 

@@ -8,32 +8,86 @@ class RealtimeDBService {
         'https://fir-auth-5b553-default-rtdb.asia-southeast1.firebasedatabase.app',
   );
 
-  /// Expose the database if you ever need raw access
+  /// Expose raw database access if needed
   FirebaseDatabase get database => _database;
 
   /// Quick reference to any path
   DatabaseReference ref(String path) => _database.ref(path);
 
-  /// ✅ Chat-specific reference
-  DatabaseReference getChatRef(String chatId) => _database.ref("chats/$chatId");
+  // -----------------------
+  // CHAT
+  // -----------------------
 
-  /// ✅ Server timestamp helper
+  /// Reference to a specific chat
+  DatabaseReference getChatRef(String chatId) => ref("chats/$chatId");
+
+  /// Send a message to a chat
+  Future<void> sendMessage(String chatId, Map<String, dynamic> message) async {
+    await getChatRef(chatId).child("messages").push().set({
+      ...message,
+      "timestamp": ServerValue.timestamp,
+    });
+  }
+
+  /// Stream messages for a chat
+  Stream<DatabaseEvent> messagesStream(String chatId) {
+    return getChatRef(chatId).child("messages").onValue;
+  }
+
+  // -----------------------
+  // USER STATUS
+  // -----------------------
+
+  /// Set user online
+  Future<void> setUserOnline(String uid) async {
+    await ref('status/$uid').set({
+      'isOnline': true,
+      'lastSeen': ServerValue.timestamp,
+    });
+  }
+
+  /// Set user offline
+  Future<void> setUserOffline(String uid) async {
+    await ref('status/$uid').set({
+      'isOnline': false,
+      'lastSeen': ServerValue.timestamp,
+    });
+  }
+
+  /// Stream user online status
+  Stream<DatabaseEvent> userStatusStream(String uid) {
+    return ref('status/$uid').onValue;
+  }
+
+  // -----------------------
+  // FRIENDS / REQUESTS
+  // -----------------------
+
+  /// Reference to a user's friends
+  DatabaseReference friendsRef(String uid) => ref("friends/$uid");
+
+  /// Reference to friend requests
+  DatabaseReference friendRequestsRef(String requestId) =>
+      ref("friend_requests/$requestId");
+
+  // -----------------------
+  // GENERAL HELPERS
+  // -----------------------
+
+  /// Server timestamp helper
   static Map<String, String> get serverTimestamp => ServerValue.timestamp;
 
-  /// Example: Messages node (optional)
-  DatabaseReference get messagesRef => _database.ref("messages");
-
-  /// Example: Add a test message
-  Future<void> addMessage(String text) async {
-    await messagesRef.push().set({
+  /// Add a test message (optional)
+  Future<void> addTestMessage(String text) async {
+    await ref("messages").push().set({
       "text": text,
       "timestamp": ServerValue.timestamp,
     });
   }
 
-  /// Example: Listen for messages
+  /// Listen for messages at root messages node (optional)
   void listenMessages(Function(dynamic) onData) {
-    messagesRef.onValue.listen((event) {
+    ref("messages").onValue.listen((event) {
       final data = event.snapshot.value;
       onData(data);
     });
