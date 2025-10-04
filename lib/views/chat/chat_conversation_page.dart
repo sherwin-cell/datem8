@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:intl/intl.dart';
 import 'package:datem8/services/cloudinary_service.dart';
+import 'package:datem8/helper/utils/blocked_user_service.dart.dart';
 
 class ChatConversationPage extends StatefulWidget {
   final String chatId;
@@ -32,14 +33,43 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   final Map<String, String> _reactions = {};
   final List<String> _reactionEmojis = ["👍", "❤️", "😂", "😮", "😢", "😡"];
 
+  final BlockedUserService _blockedService = BlockedUserService();
+
+  bool _isBlocked = false;
+  bool _currentUserBlockedOther = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    _checkBlockedStatus();
+  }
+
+  Future<void> _checkBlockedStatus() async {
+    final blocked = await _blockedService.isBlocked(
+        widget.currentUserId, widget.otherUserId);
+    final currentUserBlockedOther = await _blockedService.isUserBlocked(
+        widget.currentUserId, widget.otherUserId);
+
+    if (mounted) {
+      setState(() {
+        _isBlocked = blocked; // Either user blocked the other
+        _currentUserBlockedOther = currentUserBlockedOther; // Menu logic
+      });
+    }
   }
 
   // ---------------- Messaging ----------------
   Future<void> _sendMessage({String? imageUrl}) async {
+    if (_isBlocked) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text(
+                "Messaging is disabled because one of you blocked the other.")),
+      );
+      return;
+    }
+
     final text = _messageController.text.trim();
     if (text.isEmpty && imageUrl == null) return;
 
@@ -87,7 +117,6 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     final msgRef =
         _dbRef.child('chats/${widget.chatId}/messages/$msgKey/reaction');
     await msgRef.set({'userId': widget.currentUserId, 'emoji': emoji});
-
     setState(() => _reactions[msgKey] = emoji);
   }
 
@@ -165,10 +194,8 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       onLongPress: () async {
         final action = await showModalBottomSheet<String>(
           context: context,
-          builder: (_) => _MessageActionSheet(
-            isMe: isMe,
-            emojis: _reactionEmojis,
-          ),
+          builder: (_) =>
+              _MessageActionSheet(isMe: isMe, emojis: _reactionEmojis),
         );
 
         if (action != null) {
@@ -206,11 +233,9 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                 if ((msg['text'] ?? "").isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 4.0),
-                    child: Text(
-                      msg['text'],
-                      style: TextStyle(
-                          color: isMe ? Colors.white : Colors.black87),
-                    ),
+                    child: Text(msg['text'],
+                        style: TextStyle(
+                            color: isMe ? Colors.white : Colors.black87)),
                   ),
                 if (reactionEmoji != null)
                   Padding(
@@ -238,6 +263,19 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   }
 
   Widget _buildInputField() {
+    if (_isBlocked) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        color: Colors.grey[200],
+        child: const Center(
+          child: Text(
+            "Messaging is disabled because one of you blocked the other.",
+            style: TextStyle(color: Colors.red),
+          ),
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
       color: Colors.white,
@@ -276,10 +314,49 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     );
   }
 
+  Future<void> _deleteConversation() async {
+    try {
+      await _dbRef.child('chats/${widget.chatId}').remove();
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Failed to delete conversation: $e")));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.otherUserName)),
+      appBar: AppBar(
+        title: Text(widget.otherUserName),
+        actions: [
+          PopupMenuButton<String>(
+            onSelected: (value) async {
+              if (value == 'block') {
+                await _blockedService.blockUser(
+                    widget.currentUserId, widget.otherUserId);
+              } else if (value == 'unblock') {
+                await _blockedService.unblockUser(
+                    widget.currentUserId, widget.otherUserId);
+              } else if (value == 'delete') {
+                await _deleteConversation();
+              }
+              await _checkBlockedStatus();
+            },
+            itemBuilder: (context) => [
+              _currentUserBlockedOther
+                  ? const PopupMenuItem(
+                      value: 'unblock', child: Text('Unblock User'))
+                  : const PopupMenuItem(
+                      value: 'block', child: Text('Block User')),
+              const PopupMenuItem(
+                  value: 'delete', child: Text('Delete Conversation')),
+            ],
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Expanded(
@@ -323,12 +400,12 @@ class _MessageActionSheet extends StatelessWidget {
         children: [
           Wrap(
             spacing: 8,
-            children: emojis.map((emoji) {
-              return GestureDetector(
-                onTap: () => Navigator.of(context).pop(emoji),
-                child: Text(emoji, style: const TextStyle(fontSize: 28)),
-              );
-            }).toList(),
+            children: emojis
+                .map((emoji) => GestureDetector(
+                      onTap: () => Navigator.of(context).pop(emoji),
+                      child: Text(emoji, style: const TextStyle(fontSize: 28)),
+                    ))
+                .toList(),
           ),
           if (isMe)
             ListTile(
