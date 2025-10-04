@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "408834623211",
+    "firebase_url": "https://fir-auth-5b553-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "fir-auth-5b553",
+    "storage_bucket": "fir-auth-5b553.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:408834623211:android:6ee42746801a58b44d20ae",
+        "android_client_info": {
+          "package_name": "com.example.datem8"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "408834623211-fraoi8rjhro3665gegq3ukg9oqhcpibo.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCOhAcN9GreuSGWm48XdIGlgBSjGLTs6Pc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "408834623211-fraoi8rjhro3665gegq3ukg9oqhcpibo.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
