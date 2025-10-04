@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:intl/intl.dart';
 import 'package:datem8/services/cloudinary_service.dart';
-import 'package:datem8/helper/utils/blocked_user_service.dart.dart';
+import 'package:datem8/helper/utils/blocked_user_service.dart';
+import 'package:datem8/views/profile/other_profile_page.dart';
 
+// ---------------- Chat Page ----------------
 class ChatConversationPage extends StatefulWidget {
   final String chatId;
   final String currentUserId;
@@ -32,7 +34,6 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   final Set<String> _tappedMessages = {};
   final Map<String, String> _reactions = {};
   final List<String> _reactionEmojis = ["👍", "❤️", "😂", "😮", "😢", "😡"];
-
   final BlockedUserService _blockedService = BlockedUserService();
 
   bool _isBlocked = false;
@@ -53,8 +54,8 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
 
     if (mounted) {
       setState(() {
-        _isBlocked = blocked; // Either user blocked the other
-        _currentUserBlockedOther = currentUserBlockedOther; // Menu logic
+        _isBlocked = blocked;
+        _currentUserBlockedOther = currentUserBlockedOther;
       });
     }
   }
@@ -165,6 +166,18 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text("Failed to send photo: $e")));
+      }
+    }
+  }
+
+  Future<void> _deleteConversation() async {
+    try {
+      await _dbRef.child('chats/${widget.chatId}').remove();
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Failed to delete conversation: $e")));
       }
     }
   }
@@ -314,18 +327,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     );
   }
 
-  Future<void> _deleteConversation() async {
-    try {
-      await _dbRef.child('chats/${widget.chatId}').remove();
-      if (mounted) Navigator.of(context).pop();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Failed to delete conversation: $e")));
-      }
-    }
-  }
-
+  // ---------------- Build ----------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -334,7 +336,18 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
         actions: [
           PopupMenuButton<String>(
             onSelected: (value) async {
-              if (value == 'block') {
+              if (value == 'view_profile') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => OtherUserProfilePage(
+                      userId: widget.otherUserId,
+                      userName: widget.otherUserName,
+                      avatarUrl: "",
+                    ),
+                  ),
+                );
+              } else if (value == 'block') {
                 await _blockedService.blockUser(
                     widget.currentUserId, widget.otherUserId);
               } else if (value == 'unblock') {
@@ -346,6 +359,8 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
               await _checkBlockedStatus();
             },
             itemBuilder: (context) => [
+              const PopupMenuItem(
+                  value: 'view_profile', child: Text('View Profile')),
               _currentUserBlockedOther
                   ? const PopupMenuItem(
                       value: 'unblock', child: Text('Unblock User'))
@@ -385,7 +400,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   }
 }
 
-// Bottom sheet for reactions + delete
+// ---------------- Bottom Sheet for Reactions + Delete ----------------
 class _MessageActionSheet extends StatelessWidget {
   final bool isMe;
   final List<String> emojis;
