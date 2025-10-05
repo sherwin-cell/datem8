@@ -11,9 +11,11 @@ class ChatPage extends StatelessWidget {
 
   const ChatPage({super.key, required this.cloudinaryService});
 
+  // Generate a consistent chat ID for both users
   String _getChatId(String uid1, String uid2) =>
       uid1.hashCode <= uid2.hashCode ? '$uid1-$uid2' : '$uid2-$uid1';
 
+  // Open or create a chat
   Future<void> _openChat(BuildContext context, String currentUserId,
       String otherUserId, String otherUserName) async {
     final chatId = _getChatId(currentUserId, otherUserId);
@@ -43,6 +45,7 @@ class ChatPage extends StatelessWidget {
     );
   }
 
+  // Format message timestamp
   String _formatTime(int? timestamp) {
     if (timestamp == null) return "";
     final date = DateTime.fromMillisecondsSinceEpoch(timestamp);
@@ -57,11 +60,11 @@ class ChatPage extends StatelessWidget {
     } else if (diff.inDays == 1 || (diff.inDays < 2 && now.day != date.day)) {
       return 'Yesterday ${DateFormat('hh:mm a').format(date)}';
     } else {
-      return DateFormat('EEEE').format(date);
+      return DateFormat('MMM d').format(date);
     }
   }
 
-  // Convert last seen timestamp into "x minutes/hours ago"
+  // Format last seen text
   String _formatLastSeen(int? timestamp) {
     if (timestamp == null) return "";
     final date = DateTime.fromMillisecondsSinceEpoch(timestamp);
@@ -73,6 +76,7 @@ class ChatPage extends StatelessWidget {
     return "${diff.inDays} d ago";
   }
 
+  // User avatar with online indicator
   Widget _buildUserAvatar(String profilePic, String userId,
       {double radius = 28}) {
     return StreamBuilder<DatabaseEvent>(
@@ -143,6 +147,7 @@ class ChatPage extends StatelessWidget {
       appBar: AppBar(title: const Text("Messages")),
       body: Column(
         children: [
+          // ------------------ Horizontal friends list ------------------
           SizedBox(
             height: 100,
             child: StreamBuilder<DocumentSnapshot>(
@@ -154,8 +159,9 @@ class ChatPage extends StatelessWidget {
 
                 final friendsData =
                     snapshot.data?.data() as Map<String, dynamic>? ?? {};
-                if (friendsData.isEmpty)
+                if (friendsData.isEmpty) {
                   return const Center(child: Text("No friends yet"));
+                }
 
                 final friendIds = friendsData.keys.toList();
 
@@ -211,32 +217,31 @@ class ChatPage extends StatelessWidget {
               },
             ),
           ),
+
           const Divider(height: 1),
+
+          // ------------------ Main chat list (only friends) ------------------
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: usersCollection.snapshots(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData)
+            child: StreamBuilder<DocumentSnapshot>(
+              stream: friendsDoc.snapshots(),
+              builder: (context, friendsSnapshot) {
+                if (!friendsSnapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
+                }
 
-                final users = snapshot.data!.docs
-                    .where((doc) => doc.id != currentUser.uid)
-                    .map((doc) {
-                  final data = doc.data() as Map<String, dynamic>;
-                  data['uid'] = doc.id;
-                  return data;
-                }).toList();
+                final friendsData =
+                    friendsSnapshot.data?.data() as Map<String, dynamic>? ?? {};
+                if (friendsData.isEmpty) {
+                  return const Center(child: Text("No friends to chat with"));
+                }
 
-                if (users.isEmpty)
-                  return const Center(child: Text("No users available"));
+                final friendIds = friendsData.keys.toList();
 
-                return ListView.separated(
-                  itemCount: users.length,
-                  separatorBuilder: (_, __) => const Divider(),
+                return ListView.builder(
+                  itemCount: friendIds.length,
                   itemBuilder: (context, index) {
-                    final user = users[index];
-                    final userId = user['uid'] ?? "";
-                    final chatId = _getChatId(currentUser.uid, userId);
+                    final friendId = friendIds[index];
+                    final chatId = _getChatId(currentUser.uid, friendId);
                     final chatRef =
                         FirebaseDatabase.instance.ref('chats/$chatId');
 
@@ -259,25 +264,48 @@ class ChatPage extends StatelessWidget {
                           }
                         }
 
-                        return ListTile(
-                          leading: _buildUserAvatar(
-                              user['profilePic'] ?? '', userId),
-                          title: Text(
-                              "${user['firstName'] ?? 'Unknown'} ${user['lastName'] ?? ''}"),
-                          subtitle: lastMessage.isNotEmpty
-                              ? Text(lastMessage,
-                                  maxLines: 1, overflow: TextOverflow.ellipsis)
-                              : null,
-                          trailing: time.isNotEmpty
-                              ? Text(time,
-                                  style: const TextStyle(
-                                      fontSize: 12, color: Colors.grey))
-                              : null,
-                          onTap: () => _openChat(
-                              context,
-                              currentUser.uid,
-                              userId,
-                              "${user['firstName'] ?? 'Unknown'} ${user['lastName'] ?? ''}"),
+                        return FutureBuilder<DocumentSnapshot>(
+                          future: usersCollection.doc(friendId).get(),
+                          builder: (context, userSnapshot) {
+                            if (!userSnapshot.hasData) {
+                              return const ListTile(
+                                title: Text("Loading..."),
+                                leading: CircleAvatar(),
+                              );
+                            }
+
+                            final userData = userSnapshot.data?.data()
+                                    as Map<String, dynamic>? ??
+                                {};
+                            final name =
+                                "${userData['firstName'] ?? 'Unknown'} ${userData['lastName'] ?? ''}";
+                            final profilePic = userData['profilePic'] ?? '';
+
+                            return ListTile(
+                              leading: _buildUserAvatar(profilePic, friendId),
+                              title: Text(name),
+                              subtitle: lastMessage.isNotEmpty
+                                  ? Text(
+                                      lastMessage,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    )
+                                  : const Text("Say hi 👋"),
+                              trailing: time.isNotEmpty
+                                  ? Text(
+                                      time,
+                                      style: const TextStyle(
+                                          fontSize: 12, color: Colors.grey),
+                                    )
+                                  : null,
+                              onTap: () => _openChat(
+                                context,
+                                currentUser.uid,
+                                friendId,
+                                name,
+                              ),
+                            );
+                          },
                         );
                       },
                     );
