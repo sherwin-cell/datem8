@@ -1,4 +1,3 @@
-// sign_up_page.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:datem8/services/cloudinary_service.dart';
@@ -46,7 +45,7 @@ class _SignUpPageState extends State<SignUpPage> {
     }
 
     if (!_isValidEmail(email)) {
-      _showSnack("Invalid email format.");
+      _showSnack("Invalid email format");
       return;
     }
 
@@ -79,9 +78,9 @@ class _SignUpPageState extends State<SignUpPage> {
     } on FirebaseAuthException catch (e) {
       String message = "Sign up failed";
       if (e.code == 'email-already-in-use') {
-        message = "You already have an account.";
+        message = "You already have an account";
       } else if (e.code == 'weak-password') {
-        message = "Password is too weak.";
+        message = "Password is too weak";
       } else if (e.message != null) {
         message = e.message!;
       }
@@ -101,7 +100,8 @@ class _SignUpPageState extends State<SignUpPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Sign Up"), automaticallyImplyLeading: false),
+      appBar: AppBar(
+          title: const Text("Sign Up"), automaticallyImplyLeading: false),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -120,7 +120,8 @@ class _SignUpPageState extends State<SignUpPage> {
                   labelText: "Password",
                   suffixIcon: GestureDetector(
                     onLongPress: () => setState(() => _obscurePassword = false),
-                    onLongPressUp: () => setState(() => _obscurePassword = true),
+                    onLongPressUp: () =>
+                        setState(() => _obscurePassword = true),
                     child: Transform.scale(
                       scale: 0.9,
                       child: Icon(
@@ -141,8 +142,10 @@ class _SignUpPageState extends State<SignUpPage> {
                 decoration: InputDecoration(
                   labelText: "Confirm Password",
                   suffixIcon: GestureDetector(
-                    onLongPress: () => setState(() => _obscureConfirmPassword = false),
-                    onLongPressUp: () => setState(() => _obscureConfirmPassword = true),
+                    onLongPress: () =>
+                        setState(() => _obscureConfirmPassword = false),
+                    onLongPressUp: () =>
+                        setState(() => _obscureConfirmPassword = true),
                     child: Transform.scale(
                       scale: 0.9,
                       child: Icon(
@@ -161,7 +164,8 @@ class _SignUpPageState extends State<SignUpPage> {
                   ? const CircularProgressIndicator()
                   : ElevatedButton(
                       onPressed: _createAccount,
-                      style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
+                      style: ElevatedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 50)),
                       child: const Text("Create Account"),
                     ),
             ],
