@@ -19,6 +19,9 @@ class ExplorePage extends StatefulWidget {
 class _ExplorePageState extends State<ExplorePage> {
   final _firestore = FirebaseFirestore.instance;
 
+  // Track current page per post
+  final Map<String, int> _currentPages = {};
+
   Future<void> _refreshPosts() async => setState(() {});
 
   Future<Map<String, String>> _getUserInfo(String userId) async {
@@ -48,7 +51,6 @@ class _ExplorePageState extends State<ExplorePage> {
       final data = snap.data() ?? {};
       final reactions = Map<String, dynamic>.from(data['reactions'] ?? {});
 
-      // Toggle reaction
       if (reactions[user.uid] == emoji) {
         reactions.remove(user.uid);
       } else {
@@ -60,8 +62,8 @@ class _ExplorePageState extends State<ExplorePage> {
   }
 
   Future<String?> _showEmojiPicker(BuildContext context) async {
-    final emojis = ['❤️', '😆', '😮', '😢', '😡'];
-    return await showModalBottomSheet<String>(
+    const emojis = ['❤️', '😆', '😮', '😢', '😡'];
+    return showModalBottomSheet<String>(
       context: context,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
@@ -72,13 +74,15 @@ class _ExplorePageState extends State<ExplorePage> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: emojis
-              .map((emoji) => GestureDetector(
-                    onTap: () => Navigator.pop(context, emoji),
-                    child: Text(
-                      emoji,
-                      style: GoogleFonts.notoColorEmoji(fontSize: 36),
-                    ),
-                  ))
+              .map(
+                (emoji) => GestureDetector(
+                  onTap: () => Navigator.pop(context, emoji),
+                  child: Text(
+                    emoji,
+                    style: GoogleFonts.notoColorEmoji(fontSize: 36),
+                  ),
+                ),
+              )
               .toList(),
         ),
       ),
@@ -112,10 +116,10 @@ class _ExplorePageState extends State<ExplorePage> {
         _firestore.collection('posts').orderBy('createdAt', descending: true);
 
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 241, 229, 239),
+      backgroundColor: const Color(0xFFF1E5EF),
       appBar: AppBar(
         title: const Text('Explore'),
-        backgroundColor: const Color.fromARGB(255, 106, 105, 105),
+        backgroundColor: const Color(0xFF6A6969),
         automaticallyImplyLeading: false,
       ),
       body: RefreshIndicator(
@@ -133,6 +137,7 @@ class _ExplorePageState extends State<ExplorePage> {
               padding: const EdgeInsets.all(8),
               itemCount: posts.length + 1,
               itemBuilder: (context, index) {
+                // New post card at top
                 if (index == 0) {
                   final uid = FirebaseAuth.instance.currentUser?.uid;
                   if (uid == null) return const SizedBox();
@@ -145,10 +150,10 @@ class _ExplorePageState extends State<ExplorePage> {
                         onTap: _openNewPost,
                         child: Container(
                           margin: const EdgeInsets.symmetric(vertical: 8),
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(20),
                             boxShadow: const [
                               BoxShadow(
                                 color: Colors.black12,
@@ -184,6 +189,7 @@ class _ExplorePageState extends State<ExplorePage> {
                   );
                 }
 
+                // Existing posts
                 final postDoc = posts[index - 1];
                 final postData = postDoc.data() as Map<String, dynamic>;
                 final caption = postData['caption'] ?? '';
@@ -193,15 +199,17 @@ class _ExplorePageState extends State<ExplorePage> {
                     : DateTime.now();
 
                 final images = postData['imageUrls'] != null
-                    ? List<String>.from(postData['imageUrls'])
+                    ? List<String>.from((postData['imageUrls'] as List<dynamic>)
+                        .map((e) => e.toString()))
                     : postData['imageUrl'] != null
-                        ? [postData['imageUrl']]
+                        ? [postData['imageUrl'].toString()]
                         : [];
 
                 return FutureBuilder<Map<String, String>>(
                   future: _getUserInfo(userId),
                   builder: (context, snap) {
                     final user = snap.data ?? {'name': 'Unknown', 'avatar': ''};
+                    final currentPage = _currentPages[postDoc.id] ?? 0;
 
                     return Card(
                       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -211,7 +219,7 @@ class _ExplorePageState extends State<ExplorePage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // 👤 User info
+                          // User info
                           ListTile(
                             leading: CircleAvatar(
                               radius: 20,
@@ -226,28 +234,64 @@ class _ExplorePageState extends State<ExplorePage> {
                                 style: const TextStyle(
                                     fontWeight: FontWeight.bold)),
                             subtitle: Text(
-                              DateFormat.yMMMd().add_jm().format(createdAt),
-                            ),
+                                DateFormat.yMMMd().add_jm().format(createdAt)),
                           ),
 
-                          // 🖼️ Post image
+                          // Post images
                           if (images.isNotEmpty)
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: SizedBox(
-                                height: 250,
-                                child: PageView.builder(
-                                  itemCount: images.length,
-                                  itemBuilder: (context, i) => Image.network(
-                                    images[i],
-                                    fit: BoxFit.cover,
-                                    width: double.infinity,
+                            Column(
+                              children: [
+                                SizedBox(
+                                  height: 250,
+                                  child: PageView.builder(
+                                    itemCount: images.length,
+                                    onPageChanged: (page) {
+                                      setState(() {
+                                        _currentPages[postDoc.id] = page;
+                                      });
+                                    },
+                                    itemBuilder: (context, i) => ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Image.network(
+                                        images[i],
+                                        fit: BoxFit.cover,
+                                        width: double.infinity,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
+                                // Page indicators
+                                if (images.length > 1)
+                                  Padding(
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 8),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children:
+                                          List.generate(images.length, (i) {
+                                        return AnimatedContainer(
+                                          duration:
+                                              const Duration(milliseconds: 250),
+                                          margin: const EdgeInsets.symmetric(
+                                              horizontal: 4),
+                                          width: i == currentPage ? 10 : 8,
+                                          height: i == currentPage ? 10 : 8,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: i == currentPage
+                                                ? Colors.black
+                                                : Colors.grey[400]
+                                                    ?.withOpacity(0.6),
+                                          ),
+                                        );
+                                      }),
+                                    ),
+                                  ),
+                              ],
                             ),
 
-                          // ✍ Caption
+                          // Caption
                           if (caption.isNotEmpty)
                             Padding(
                               padding: const EdgeInsets.all(12.0),
@@ -255,7 +299,7 @@ class _ExplorePageState extends State<ExplorePage> {
                                   style: const TextStyle(fontSize: 16)),
                             ),
 
-                          // ❤️ Reactions and comments
+                          // Reactions and comments
                           Padding(
                             padding:
                                 const EdgeInsets.symmetric(horizontal: 12.0),
@@ -263,7 +307,6 @@ class _ExplorePageState extends State<ExplorePage> {
                               stream: postDoc.reference.snapshots(),
                               builder: (context, snap) {
                                 if (!snap.hasData) return const SizedBox();
-
                                 final post =
                                     snap.data!.data() as Map<String, dynamic>;
                                 final reactions = Map<String, dynamic>.from(
@@ -284,7 +327,6 @@ class _ExplorePageState extends State<ExplorePage> {
                                   builder: (context, commentSnap) {
                                     final commentCount =
                                         commentSnap.data?.docs.length ?? 0;
-
                                     return Row(
                                       children: [
                                         GestureDetector(
@@ -293,10 +335,9 @@ class _ExplorePageState extends State<ExplorePage> {
                                           onLongPress: () async {
                                             final emoji =
                                                 await _showEmojiPicker(context);
-                                            if (emoji != null) {
+                                            if (emoji != null)
                                               _updateReaction(
                                                   postDoc.id, emoji);
-                                            }
                                           },
                                           child: Text(
                                             userReaction.isNotEmpty
@@ -310,17 +351,18 @@ class _ExplorePageState extends State<ExplorePage> {
                                         if (counts.isNotEmpty)
                                           Row(
                                             children: counts.entries
-                                                .map((e) => Padding(
-                                                      padding: const EdgeInsets
-                                                          .symmetric(
-                                                          horizontal: 4),
-                                                      child: Text(
+                                                .map(
+                                                  (e) => Padding(
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                        horizontal: 4),
+                                                    child: Text(
                                                         "${e.key}${e.value}",
                                                         style: GoogleFonts
                                                             .notoColorEmoji(
-                                                                fontSize: 18),
-                                                      ),
-                                                    ))
+                                                                fontSize: 18)),
+                                                  ),
+                                                )
                                                 .toList(),
                                           ),
                                         const SizedBox(width: 16),

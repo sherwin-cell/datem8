@@ -18,10 +18,8 @@ class _NewPostPageState extends State<NewPostPage> {
   final TextEditingController _captionController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
   bool _isLoading = false;
-
   List<File> _images = [];
 
-  // Auto-changing placeholder
   final List<String> _prompts = [
     "What's on your mind?",
     "Share your thoughts...",
@@ -35,7 +33,7 @@ class _NewPostPageState extends State<NewPostPage> {
   @override
   void initState() {
     super.initState();
-    _placeholderTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+    _placeholderTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       if (_captionController.text.isEmpty) {
         setState(() {
           _currentPromptIndex = (_currentPromptIndex + 1) % _prompts.length;
@@ -52,26 +50,93 @@ class _NewPostPageState extends State<NewPostPage> {
     super.dispose();
   }
 
-  Future<void> _pickImages() async {
+  Future<void> _showImageSourceDialog() async {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Gallery'),
+              onTap: () {
+                Navigator.of(context).pop();
+                _pickImagesFromGallery();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Camera'),
+              onTap: () {
+                Navigator.of(context).pop();
+                _pickImageFromCamera();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImagesFromGallery() async {
     try {
       final pickedFiles = await _picker.pickMultiImage();
-      if (!mounted)
-        return; // No null check needed for pickedFiles in null-safety
-
+      if (!mounted || pickedFiles.isEmpty) return;
       setState(() {
         _images.addAll(pickedFiles.map((file) => File(file.path)));
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Error picking images: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error picking images: $e")),
+      );
+    }
+  }
+
+  Future<void> _pickImageFromCamera() async {
+    try {
+      final pickedFile = await _picker.pickImage(source: ImageSource.camera);
+      if (!mounted || pickedFile == null) return;
+      setState(() {
+        _images.add(File(pickedFile.path));
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error taking photo: $e")),
+      );
+    }
+  }
+
+  Future<void> _confirmDiscard() async {
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Discard Post?"),
+        content: const Text("Are you sure you want to discard this post?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text("No"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text("Yes"),
+          ),
+        ],
+      ),
+    );
+
+    if (discard == true) {
+      Navigator.of(context).pop();
     }
   }
 
   Future<void> _submitPost() async {
     if (_images.isEmpty && _captionController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please add an image or caption")));
+        const SnackBar(content: Text("Please add an image or caption")),
+      );
       return;
     }
 
@@ -89,13 +154,10 @@ class _NewPostPageState extends State<NewPostPage> {
       final profilePic = userDoc.data()?['profilePic'] ?? '';
       final name = userDoc.data()?['name'] ?? 'Unknown';
 
-      // Upload multiple images
       List<String> imageUrls = [];
       for (var image in _images) {
-        final uploadedUrl = await widget.cloudinaryService.uploadImage(
-          image,
-          folder: 'posts',
-        );
+        final uploadedUrl =
+            await widget.cloudinaryService.uploadImage(image, folder: 'posts');
         if (uploadedUrl != null) imageUrls.add(uploadedUrl);
       }
 
@@ -112,8 +174,9 @@ class _NewPostPageState extends State<NewPostPage> {
       Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Failed to post: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to post: $e")),
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -122,7 +185,7 @@ class _NewPostPageState extends State<NewPostPage> {
   Widget _buildImagePreview() {
     if (_images.isEmpty) {
       return GestureDetector(
-        onTap: _pickImages,
+        onTap: _showImageSourceDialog,
         child: Container(
           height: 240,
           decoration: BoxDecoration(
@@ -140,25 +203,21 @@ class _NewPostPageState extends State<NewPostPage> {
       );
     }
 
-    return SizedBox(
-      height: 150,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: _images.length,
-        itemBuilder: (context, index) {
-          return Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.file(
-                _images[index],
-                width: 150,
-                fit: BoxFit.cover,
-              ),
+    return Column(
+      children: _images.map((image) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12.0),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Image.file(
+              image,
+              width: double.infinity,
+              height: 240,
+              fit: BoxFit.cover,
             ),
-          );
-        },
-      ),
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -168,21 +227,33 @@ class _NewPostPageState extends State<NewPostPage> {
 
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text("New Post"),
-          elevation: 1,
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black87,
-        ),
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
+      child: WillPopScope(
+        onWillPop: () async {
+          await _confirmDiscard();
+          return false;
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text("New Post"),
+            elevation: 1,
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.black87,
+            actions: [
+              TextButton(
+                onPressed: _confirmDiscard,
+                child: const Text(
+                  "Discard",
+                  style: TextStyle(color: Colors.red, fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+          body: SafeArea(
             child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // User avatar + caption
                   if (userId != null)
                     StreamBuilder<DocumentSnapshot>(
                       stream: FirebaseFirestore.instance
@@ -241,7 +312,8 @@ class _NewPostPageState extends State<NewPostPage> {
                             style: ElevatedButton.styleFrom(
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(14)),
-                              backgroundColor: Colors.blueAccent.shade700,
+                              backgroundColor:
+                                  const Color.fromARGB(255, 165, 172, 193),
                               elevation: 2,
                             ),
                             child: const Text(

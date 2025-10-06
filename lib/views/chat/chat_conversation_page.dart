@@ -5,7 +5,6 @@ import 'package:datem8/services/cloudinary_service.dart';
 import 'package:datem8/helper/utils/blocked_user_service.dart';
 import 'package:datem8/views/profile/other_profile_page.dart';
 
-// ---------------- Chat Page ----------------
 class ChatConversationPage extends StatefulWidget {
   final String chatId;
   final String currentUserId;
@@ -60,7 +59,6 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     }
   }
 
-  // ---------------- Messaging ----------------
   Future<void> _sendMessage({String? imageUrl}) async {
     if (_isBlocked) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -121,7 +119,6 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     setState(() => _reactions[msgKey] = emoji);
   }
 
-  // ---------------- Helpers ----------------
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
@@ -141,7 +138,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
         map['key'] = e.key;
         return map;
       }).toList();
-      msgs.sort((a, b) => (a['timestamp'] ?? 0).compareTo(b['timestamp'] ?? 0));
+      msgs.sort((a, b) => (a['timestamp'] ?? 0).compareTo(a['timestamp'] ?? 0));
       return msgs;
     });
   }
@@ -188,7 +185,6 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
         .format(DateTime.fromMillisecondsSinceEpoch(timestamp));
   }
 
-  // ---------------- Widgets ----------------
   Widget _buildMessage(Map<String, dynamic> msg) {
     final isMe = msg['senderId'] == widget.currentUserId;
     final msgKey = msg['key'];
@@ -229,7 +225,8 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
           ),
           child: ConstrainedBox(
             constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.7),
+              maxWidth: MediaQuery.of(context).size.width * 0.75,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -245,20 +242,26 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                   ),
                 if ((msg['text'] ?? "").isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.only(top: 4.0),
-                    child: Text(msg['text'],
-                        style: TextStyle(
-                            color: isMe ? Colors.white : Colors.black87)),
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      msg['text'],
+                      style: TextStyle(
+                          color: isMe ? Colors.white : Colors.black87),
+                      softWrap: true,
+                      overflow: TextOverflow.visible,
+                    ),
                   ),
                 if (reactionEmoji != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
-                    child: Text(reactionEmoji,
-                        style: const TextStyle(fontSize: 18)),
+                    child: Text(
+                      reactionEmoji,
+                      style: const TextStyle(fontSize: 18),
+                    ),
                   ),
                 if (isTapped)
                   Padding(
-                    padding: const EdgeInsets.only(top: 2.0),
+                    padding: const EdgeInsets.only(top: 2),
                     child: Text(
                       _formatTime(msg['timestamp']),
                       style: TextStyle(
@@ -295,18 +298,20 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       child: Row(
         children: [
           IconButton(
-              icon: const Icon(Icons.photo),
-              color: Colors.green,
-              onPressed: _pickImage),
+            icon: const Icon(Icons.photo),
+            color: const Color.fromARGB(255, 78, 80, 78),
+            onPressed: _pickImage,
+          ),
           IconButton(
-              icon: const Icon(Icons.camera_alt),
-              color: Colors.orange,
-              onPressed: _takePhoto),
+            icon: const Icon(Icons.camera_alt),
+            color: const Color.fromARGB(255, 72, 71, 70),
+            onPressed: _takePhoto,
+          ),
           Expanded(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
               decoration: BoxDecoration(
-                color: Colors.grey[200],
+                color: const Color.fromARGB(255, 156, 151, 151),
                 borderRadius: BorderRadius.circular(30),
               ),
               child: TextField(
@@ -319,15 +324,15 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
             ),
           ),
           IconButton(
-              icon: const Icon(Icons.send),
-              color: Colors.blue,
-              onPressed: () => _sendMessage()),
+            icon: const Icon(Icons.send),
+            color: Colors.blue,
+            onPressed: () => _sendMessage(),
+          ),
         ],
       ),
     );
   }
 
-  // ---------------- Build ----------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -400,7 +405,6 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   }
 }
 
-// ---------------- Bottom Sheet for Reactions + Delete ----------------
 class _MessageActionSheet extends StatelessWidget {
   final bool isMe;
   final List<String> emojis;
