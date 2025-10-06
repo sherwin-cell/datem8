@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:datem8/services/cloudinary_service.dart';
 import 'package:datem8/widgets/setting_widget.dart';
+import 'edit_profile.dart';
 
 class ProfilePage extends StatefulWidget {
   final CloudinaryService cloudinaryService;
@@ -15,15 +16,20 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  String? _firstName;
-  String? _lastName;
-  String? _bio;
-  int? _age;
-  String? _profilePicUrl;
+  String _fullName = '';
+  String _bio = '';
+  int _age = 0;
+  String _profilePic = '';
+  String _course = '';
+  String _department = '';
+  String _gender = '';
+  String _interestedIn = '';
+  DateTime? _createdAt;
+  List<String> _interests = [];
   bool _isLoading = true;
 
   final currentUser = FirebaseAuth.instance.currentUser;
-  final List<File?> _extraImages = [null, null, null]; // 3 slots for photos
+  final List<File?> _extraImages = [null, null, null];
 
   @override
   void initState() {
@@ -33,66 +39,137 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _loadProfile() async {
     if (currentUser == null) return;
+    setState(() => _isLoading = true);
 
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser!.uid)
-        .get();
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .get();
 
-    if (!mounted || !doc.exists) return;
+      if (!mounted || !doc.exists) return;
+      final data = doc.data()!;
 
-    final data = doc.data()!;
-    setState(() {
-      _firstName = data['firstName'] ?? '';
-      _lastName = data['lastName'] ?? '';
+      // Construct full name
+      final firstName = (data['firstName'] ?? '').toString();
+      final lastName = (data['lastName'] ?? '').toString();
+      final nameField = (data['name'] ?? '').toString();
+      _fullName = nameField.isNotEmpty ? nameField : '$firstName $lastName';
+
       _bio = data['bio'] ?? '';
       _age = data['age'] ?? 0;
-      _profilePicUrl = data['profilePic'];
-      _isLoading = false;
-    });
+      _profilePic = data['profilePic'] ?? '';
+      _course = data['course'] ?? '';
+      _department = data['department'] ?? '';
+      _gender = data['gender'] ?? '';
+      _interestedIn = data['interestedIn'] ?? '';
+      _createdAt = (data['createdAt'] as Timestamp?)?.toDate();
+
+      // Load interests safely
+      _interests = [];
+      if (data['interests'] != null && data['interests'] is List) {
+        _interests = (data['interests'] as List<dynamic>)
+            .map((e) => e.toString())
+            .toList();
+      }
+
+      setState(() => _isLoading = false);
+    } catch (e) {
+      debugPrint("Error loading profile: $e");
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _pickExtraImage(int index) async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
     if (pickedFile == null) return;
-
-    setState(() {
-      _extraImages[index] = File(pickedFile.path);
-    });
+    setState(() => _extraImages[index] = File(pickedFile.path));
   }
 
   Widget _buildProfileImage() {
-    final imageProvider = _profilePicUrl != null && _profilePicUrl!.isNotEmpty
-        ? NetworkImage(_profilePicUrl!)
-        : null;
-
+    final hasImage = _profilePic.isNotEmpty;
     return Stack(
       children: [
         CircleAvatar(
-          radius: 40, // smaller size
-          backgroundImage: imageProvider,
-          child:
-              imageProvider == null ? const Icon(Icons.person, size: 40) : null,
+          radius: 50,
+          backgroundColor: Colors.grey[300],
+          child: hasImage
+              ? ClipOval(
+                  child: Image.network(
+                    _profilePic,
+                    width: 100,
+                    height: 100,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) =>
+                        const Icon(Icons.person, size: 50),
+                  ),
+                )
+              : const Icon(Icons.person, size: 50),
         ),
         Positioned(
           bottom: 0,
           right: 0,
           child: CircleAvatar(
-            radius: 14,
+            radius: 16,
             backgroundColor: Colors.blue,
             child: IconButton(
               padding: EdgeInsets.zero,
-              icon: const Icon(Icons.edit, size: 14, color: Colors.white),
-              onPressed: () {
-                // TODO: Add navigation to Edit Profile page
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Edit profile coming soon")),
+              icon: const Icon(Icons.edit, size: 16, color: Colors.white),
+              onPressed: () async {
+                if (currentUser == null) return;
+                final updated = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => EditProfilePage(
+                      cloudinaryService: widget.cloudinaryService,
+                      userId: currentUser!.uid,
+                    ),
+                  ),
                 );
+                if (updated == true) _loadProfile();
               },
             ),
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildProfileDetails() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(_fullName,
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+        if (_age > 0)
+          Text("Age: $_age",
+              style: const TextStyle(fontSize: 16, color: Colors.grey)),
+        if (_gender.isNotEmpty)
+          Text("Gender: $_gender",
+              style: const TextStyle(fontSize: 16, color: Colors.grey)),
+        if (_interestedIn.isNotEmpty)
+          Text("Interested in: $_interestedIn",
+              style: const TextStyle(fontSize: 16, color: Colors.grey)),
+        if (_course.isNotEmpty && _department.isNotEmpty)
+          Text("$_course - $_department",
+              style: const TextStyle(fontSize: 16, color: Colors.grey)),
+        if (_createdAt != null)
+          Text("Joined: ${_createdAt!.toLocal().toString().split(' ')[0]}",
+              style: const TextStyle(fontSize: 16, color: Colors.grey)),
+        if (_bio.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Text(_bio,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16)),
+          ),
+        if (_interests.isNotEmpty)
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: _interests.map((e) => Chip(label: Text(e))).toList(),
+          ),
       ],
     );
   }
@@ -102,7 +179,6 @@ class _ProfilePageState extends State<ProfilePage> {
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: List.generate(3, (index) {
         final imageFile = _extraImages[index];
-
         return GestureDetector(
           onTap: () => _pickExtraImage(index),
           child: Container(
@@ -113,9 +189,7 @@ class _ProfilePageState extends State<ProfilePage> {
               borderRadius: BorderRadius.circular(8),
               image: imageFile != null
                   ? DecorationImage(
-                      image: FileImage(imageFile),
-                      fit: BoxFit.cover,
-                    )
+                      image: FileImage(imageFile), fit: BoxFit.cover)
                   : null,
             ),
             child: imageFile == null
@@ -132,39 +206,26 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Profile"),
-        actions: const [
-          SettingsIconButton(),
-        ],
+        actions: const [SettingsIconButton()],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  _buildProfileImage(),
-                  const SizedBox(height: 16),
-                  Text(
-                    "${_firstName ?? ''} ${_lastName ?? ''}".trim(),
-                    style: const TextStyle(
-                        fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _age != null && _age! > 0 ? "Age: $_age" : "",
-                    style: const TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    _bio ?? '',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                  const SizedBox(height: 16),
-                  const Divider(thickness: 1),
-                  const SizedBox(height: 16),
-                  _buildExtraPhotos(), // 3 photo upload boxes
-                ],
+          : RefreshIndicator(
+              onRefresh: _loadProfile,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    _buildProfileImage(),
+                    const SizedBox(height: 16),
+                    _buildProfileDetails(),
+                    const SizedBox(height: 16),
+                    const Divider(thickness: 1),
+                    const SizedBox(height: 16),
+                    _buildExtraPhotos(),
+                  ],
+                ),
               ),
             ),
     );
