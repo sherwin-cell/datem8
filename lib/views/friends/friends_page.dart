@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:datem8/services/cloudinary_service.dart';
 import 'friends_list_tab.dart';
-import 'friend_requests_tab.dart';
-import 'people_you_may_know_tab.dart';
+import 'friend_requests_and_people_tab.dart'; // merged tab
 
 class FriendsPage extends StatefulWidget {
   final CloudinaryService cloudinaryService;
@@ -22,7 +21,6 @@ class _FriendsPageState extends State<FriendsPage>
   final List<Tab> _tabs = const [
     Tab(text: "Friends List"),
     Tab(text: "Friend Requests"),
-    Tab(text: "People You May Know"),
   ];
 
   late final List<Widget> _tabViews;
@@ -34,8 +32,7 @@ class _FriendsPageState extends State<FriendsPage>
     _tabController = TabController(length: _tabs.length, vsync: this);
     _tabViews = [
       FriendsListTab(currentUserId: currentUserId),
-      FriendRequestsTab(currentUserId: currentUserId),
-      PeopleYouMayKnowTab(currentUserId: currentUserId),
+      FriendsRequestsAndPeopleTab(currentUserId: currentUserId),
     ];
   }
 
@@ -65,9 +62,9 @@ class _FriendsPageState extends State<FriendsPage>
           labelPadding: const EdgeInsets.symmetric(horizontal: 20),
           labelColor: Colors.redAccent,
           unselectedLabelColor: Colors.black54,
-          indicator: UnderlineTabIndicator(
-            borderSide: const BorderSide(width: 3.0, color: Colors.redAccent),
-            insets: const EdgeInsets.symmetric(horizontal: 16),
+          indicator: const UnderlineTabIndicator(
+            borderSide: BorderSide(width: 3.0, color: Colors.redAccent),
+            insets: EdgeInsets.symmetric(horizontal: 16),
           ),
           labelStyle: const TextStyle(
             fontSize: 15,
@@ -80,14 +77,10 @@ class _FriendsPageState extends State<FriendsPage>
           tabs: _tabs,
         ),
       ),
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        child: TabBarView(
-          key: ValueKey<int>(_tabController.index),
-          controller: _tabController,
-          physics: const BouncingScrollPhysics(),
-          children: _tabViews,
-        ),
+      body: TabBarView(
+        controller: _tabController,
+        physics: const BouncingScrollPhysics(),
+        children: _tabViews,
       ),
     );
   }

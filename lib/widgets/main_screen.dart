@@ -28,8 +28,7 @@ class _MainScreenState extends State<MainScreen> {
       ChatPage(cloudinaryService: widget.cloudinaryService),
       ExplorePage(cloudinaryService: widget.cloudinaryService),
       FriendsPage(cloudinaryService: widget.cloudinaryService),
-      ProfilePage(
-          cloudinaryService: widget.cloudinaryService), // Drawer only here
+      ProfilePage(cloudinaryService: widget.cloudinaryService),
     ];
   }
 
@@ -43,15 +42,14 @@ class _MainScreenState extends State<MainScreen> {
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.blue,
         unselectedItemColor: Colors.grey,
+        showSelectedLabels: false, // hides selected label
+        showUnselectedLabels: false, // hides unselected labels
         items: const [
-          BottomNavigationBarItem(icon: Icon(AppIcons.home), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(AppIcons.chat), label: "Chat"),
-          BottomNavigationBarItem(
-              icon: Icon(AppIcons.explore), label: "Explore"),
-          BottomNavigationBarItem(
-              icon: Icon(AppIcons.friends), label: "Friends"),
-          BottomNavigationBarItem(
-              icon: Icon(AppIcons.profile), label: "Profile"),
+          BottomNavigationBarItem(icon: Icon(AppIcons.home), label: ''),
+          BottomNavigationBarItem(icon: Icon(AppIcons.chat), label: ''),
+          BottomNavigationBarItem(icon: Icon(AppIcons.explore), label: ''),
+          BottomNavigationBarItem(icon: Icon(AppIcons.friends), label: ''),
+          BottomNavigationBarItem(icon: Icon(AppIcons.profile), label: ''),
         ],
       ),
     );

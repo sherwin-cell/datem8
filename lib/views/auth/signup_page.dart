@@ -65,7 +65,6 @@ class _SignUpPageState extends State<SignUpPage> {
         await user.sendEmailVerification();
 
         if (!mounted) return;
-
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
