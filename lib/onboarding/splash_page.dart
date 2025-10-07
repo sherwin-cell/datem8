@@ -25,7 +25,7 @@ class _SplashPageState extends State<SplashPage> {
 
     final user = FirebaseAuth.instance.currentUser;
 
-    if (!mounted) return; // Prevent errors if widget is disposed
+    if (!mounted) return; // Prevent navigation errors if widget is disposed
 
     if (user != null) {
       // ✅ Already logged in → go to Main
@@ -52,13 +52,14 @@ class _SplashPageState extends State<SplashPage> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       backgroundColor: Colors.white,
       body: Center(
-        child: Icon(
-          Icons.favorite,
-          size: 120,
-          color: Colors.redAccent,
+        child: Image.asset(
+          'assets/images/logo.png',
+          width: 150,
+          height: 150,
+          fit: BoxFit.contain,
         ),
       ),
     );

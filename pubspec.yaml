@@ -49,7 +49,8 @@ dependencies:
   flutter_dotenv: ^6.0.0
   intl: ^0.18.0
   google_fonts: ^6.2.1
-
+  flutter_launcher_icons: ^0.14.4
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter
