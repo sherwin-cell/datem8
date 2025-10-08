@@ -9,6 +9,7 @@ import 'edit_profile.dart';
 
 class ProfilePage extends StatefulWidget {
   final CloudinaryService cloudinaryService;
+
   const ProfilePage({super.key, required this.cloudinaryService});
 
   @override
@@ -50,7 +51,6 @@ class _ProfilePageState extends State<ProfilePage> {
       if (!mounted || !doc.exists) return;
       final data = doc.data()!;
 
-      // Construct full name
       final firstName = (data['firstName'] ?? '').toString();
       final lastName = (data['lastName'] ?? '').toString();
       final nameField = (data['name'] ?? '').toString();
@@ -65,7 +65,6 @@ class _ProfilePageState extends State<ProfilePage> {
       _interestedIn = data['interestedIn'] ?? '';
       _createdAt = (data['createdAt'] as Timestamp?)?.toDate();
 
-      // Load interests safely
       _interests = [];
       if (data['interests'] != null && data['interests'] is List) {
         _interests = (data['interests'] as List<dynamic>)
@@ -206,7 +205,13 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Profile"),
-        actions: const [SettingsIconButton()],
+        actions: [
+          // Pass required parameters to SettingsIconButton
+          SettingsIconButton(
+            cloudinaryService: widget.cloudinaryService,
+            userId: currentUser!.uid,
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

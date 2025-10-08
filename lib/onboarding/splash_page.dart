@@ -13,22 +13,48 @@ class SplashPage extends StatefulWidget {
   State<SplashPage> createState() => _SplashPageState();
 }
 
-class _SplashPageState extends State<SplashPage> {
+class _SplashPageState extends State<SplashPage>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _fadeAnimation;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _rotationAnimation;
+
   @override
   void initState() {
     super.initState();
+
+    // Animation setup
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    );
+
+    _fadeAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    );
+
+    _scaleAnimation = Tween<double>(begin: 0.6, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
+    );
+
+    _rotationAnimation = Tween<double>(begin: -0.2, end: 0.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+
+    _controller.forward();
+
     _navigate();
   }
 
   Future<void> _navigate() async {
-    await Future.delayed(const Duration(seconds: 2)); // Splash delay
+    await Future.delayed(const Duration(seconds: 3)); // splash duration
 
     final user = FirebaseAuth.instance.currentUser;
-
-    if (!mounted) return; // Prevent navigation errors if widget is disposed
+    if (!mounted) return;
 
     if (user != null) {
-      // ✅ Already logged in → go to Main
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -38,7 +64,6 @@ class _SplashPageState extends State<SplashPage> {
         ),
       );
     } else {
-      // ❌ Not logged in → go to Welcome
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -51,15 +76,29 @@ class _SplashPageState extends State<SplashPage> {
   }
 
   @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       body: Center(
-        child: Image.asset(
-          'assets/images/logo.png',
-          width: 150,
-          height: 150,
-          fit: BoxFit.contain,
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: ScaleTransition(
+            scale: _scaleAnimation,
+            child: RotationTransition(
+              turns: _rotationAnimation,
+              child: Image.asset(
+                'assets/images/logo.png',
+                width: 150,
+                height: 150,
+              ),
+            ),
+          ),
         ),
       ),
     );

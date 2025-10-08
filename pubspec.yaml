@@ -50,6 +50,7 @@ dependencies:
   intl: ^0.18.0
   google_fonts: ^6.2.1
   flutter_launcher_icons: ^0.14.4
+  url_launcher: ^6.3.0
   
 dev_dependencies:
   flutter_test:
