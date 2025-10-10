@@ -136,7 +136,11 @@ class SettingsIconButton extends StatelessWidget {
     }
   }
 
+  // 🆕 ACCOUNT DIALOG (with email added)
   Future<void> _showAccountDialog(BuildContext context) async {
+    final user = FirebaseAuth.instance.currentUser;
+    final email = user?.email ?? "No email found";
+
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -145,6 +149,25 @@ class SettingsIconButton extends StatelessWidget {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Display user's email address
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.deepPurple.shade50,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: ListTile(
+                leading:
+                    const Icon(Icons.email_outlined, color: Colors.deepPurple),
+                title: Text(
+                  email,
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Divider(),
             ListTile(
               leading: const Icon(Icons.person_outline),
               title: const Text('Edit Profile'),
@@ -261,34 +284,38 @@ class SettingsIconButton extends StatelessWidget {
       },
       itemBuilder: (context) => [
         const PopupMenuItem(
-            value: 'account',
-            child:
-                ListTile(leading: Icon(Icons.person), title: Text('Account'))),
+          value: 'account',
+          child: ListTile(leading: Icon(Icons.person), title: Text('Account')),
+        ),
         const PopupMenuItem(
-            value: 'about',
-            child: ListTile(
-                leading: Icon(Icons.info_outline), title: Text("About"))),
+          value: 'about',
+          child:
+              ListTile(leading: Icon(Icons.info_outline), title: Text("About")),
+        ),
         const PopupMenuItem(
-            value: 'terms',
-            child: ListTile(
-                leading: Icon(Icons.description_outlined),
-                title: Text("Terms of Service"))),
+          value: 'terms',
+          child: ListTile(
+              leading: Icon(Icons.description_outlined),
+              title: Text("Terms of Service")),
+        ),
         const PopupMenuItem(
-            value: 'privacy',
-            child: ListTile(
-                leading: Icon(Icons.lock_outline),
-                title: Text("Privacy Policy"))),
+          value: 'privacy',
+          child: ListTile(
+              leading: Icon(Icons.lock_outline), title: Text("Privacy Policy")),
+        ),
         const PopupMenuItem(
-            value: 'contact',
-            child: ListTile(
-                leading: Icon(Icons.email_outlined),
-                title: Text("Contact Support"))),
+          value: 'contact',
+          child: ListTile(
+              leading: Icon(Icons.email_outlined),
+              title: Text("Contact Support")),
+        ),
         const PopupMenuDivider(),
         const PopupMenuItem(
-            value: 'logout',
-            child: ListTile(
-                leading: Icon(Icons.logout, color: Colors.red),
-                title: Text("Logout", style: TextStyle(color: Colors.red)))),
+          value: 'logout',
+          child: ListTile(
+              leading: Icon(Icons.logout, color: Colors.red),
+              title: Text("Logout", style: TextStyle(color: Colors.red))),
+        ),
       ],
     );
   }

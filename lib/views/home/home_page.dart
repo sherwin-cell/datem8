@@ -67,7 +67,7 @@ class _HomePageState extends State<HomePage> {
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: const Text(
-          "Departments",
+          "Home",
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
@@ -86,7 +86,7 @@ class _HomePageState extends State<HomePage> {
               children: [
                 // Section title
                 const Text(
-                  "Explore Colleges",
+                  "Departments",
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
