@@ -29,11 +29,11 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
+  final BlockedUserService _blockedService = BlockedUserService();
 
   final Set<String> _tappedMessages = {};
   final Map<String, String> _reactions = {};
   final List<String> _reactionEmojis = ["👍", "❤️", "😂", "😮", "😢", "😡"];
-  final BlockedUserService _blockedService = BlockedUserService();
 
   bool _isBlocked = false;
   bool _currentUserBlockedOther = false;
@@ -63,8 +63,9 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     if (_isBlocked) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text(
-                "Messaging is disabled because one of you blocked the other.")),
+          content: Text(
+              "Messaging is disabled because one of you blocked the other."),
+        ),
       );
       return;
     }
@@ -309,7 +310,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
           ),
           Expanded(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
                 color: const Color.fromARGB(255, 156, 151, 151),
                 borderRadius: BorderRadius.circular(30),
@@ -348,7 +349,8 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                     builder: (_) => OtherUserProfilePage(
                       userId: widget.otherUserId,
                       userName: widget.otherUserName,
-                      avatarUrl: "",
+                      cloudinaryService: widget.cloudinaryService,
+                      avatarUrl: "", // optional
                     ),
                   ),
                 );

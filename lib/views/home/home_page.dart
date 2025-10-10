@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:datem8/services/cloudinary_service.dart';
+import 'package:datem8/widgets/profile_modal.dart';
 
 // Department pages
 import 'package:datem8/views/home/cbe_users.dart';
@@ -63,6 +65,8 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final currentUser = FirebaseAuth.instance.currentUser;
+
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
@@ -74,162 +78,185 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
         elevation: 2,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.account_circle_rounded,
+                color: Colors.deepPurple),
+            onPressed: () {
+              // show current user's modal
+              showProfileModal(context);
+            },
+          ),
+        ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: RefreshIndicator(
-          onRefresh: () async => setState(() {}),
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Section title
-                const Text(
-                  "Departments",
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
+      body: RefreshIndicator(
+        onRefresh: () async => setState(() {}),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 📍 Departments section
+              const Text(
+                "Departments",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
                 ),
-                const SizedBox(height: 12),
+              ),
+              const SizedBox(height: 12),
 
-                // Horizontal list of departments
-                SizedBox(
-                  height: 160,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: departments.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 12),
-                    itemBuilder: (context, index) {
-                      final dept = departments[index];
-                      return GestureDetector(
-                        onTap: () => _openDepartmentPage(dept["name"]),
-                        child: Hero(
-                          tag: dept["name"],
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(18),
-                            child: Stack(
-                              children: [
-                                // Department image
-                                Image.asset(
-                                  dept["image"],
-                                  width: 220,
-                                  height: 160,
-                                  fit: BoxFit.cover,
-                                ),
-
-                                // Gradient overlay (optional for readability)
-                                Container(
-                                  width: 220,
-                                  height: 160,
-                                  decoration: const BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        Colors.transparent,
-                                        Colors.black38
-                                      ],
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-
-                const SizedBox(height: 25),
-
-                // All Users Section
-                const Text(
-                  "All Users",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 8),
-
-                StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('users')
-                      .snapshots(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Padding(
-                        padding: EdgeInsets.all(40),
-                        child: Center(child: CircularProgressIndicator()),
-                      );
-                    }
-
-                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                      return const Padding(
-                        padding: EdgeInsets.all(40),
-                        child: Center(
-                          child: Text("No users found 😕"),
-                        ),
-                      );
-                    }
-
-                    final users = snapshot.data!.docs;
-
-                    return ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: users.length,
-                      itemBuilder: (context, index) {
-                        final user =
-                            users[index].data() as Map<String, dynamic>;
-                        final firstName = user['firstName'] ?? '';
-                        final lastName = user['lastName'] ?? '';
-                        final course = user['course'] ?? '';
-                        final profilePic = user['profilePic'] ?? '';
-
-                        return Card(
-                          margin: const EdgeInsets.symmetric(vertical: 6),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 2,
-                          child: ListTile(
-                            leading: profilePic.isNotEmpty
-                                ? CircleAvatar(
-                                    backgroundImage: NetworkImage(profilePic),
-                                    radius: 25,
-                                  )
-                                : const CircleAvatar(
-                                    radius: 25,
-                                    backgroundColor: Colors.grey,
-                                    child:
-                                        Icon(Icons.person, color: Colors.white),
-                                  ),
-                            title: Text(
-                              "$firstName $lastName",
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: Colors.black87,
+              SizedBox(
+                height: 160,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: departments.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (context, index) {
+                    final dept = departments[index];
+                    return GestureDetector(
+                      onTap: () => _openDepartmentPage(dept["name"]),
+                      child: Hero(
+                        tag: dept["name"],
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(18),
+                          child: Stack(
+                            children: [
+                              Image.asset(
+                                dept["image"],
+                                width: 220,
+                                height: 160,
+                                fit: BoxFit.cover,
                               ),
-                            ),
-                            subtitle: Text(
-                              course,
-                              style: const TextStyle(color: Colors.black54),
-                            ),
+                              Container(
+                                width: 220,
+                                height: 160,
+                                decoration: const BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.transparent,
+                                      Colors.black38
+                                    ],
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                left: 12,
+                                bottom: 10,
+                                child: Text(
+                                  dept["name"],
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        );
-                      },
+                        ),
+                      ),
                     );
                   },
                 ),
-              ],
-            ),
+              ),
+
+              const SizedBox(height: 25),
+
+              // 👥 All Users Section
+              const Text(
+                "All Users",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              StreamBuilder<QuerySnapshot>(
+                stream:
+                    FirebaseFirestore.instance.collection('users').snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Padding(
+                      padding: EdgeInsets.all(40),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.all(40),
+                      child: Center(
+                        child: Text("No users found 😕"),
+                      ),
+                    );
+                  }
+
+                  final users = snapshot.data!.docs;
+
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: users.length,
+                    itemBuilder: (context, index) {
+                      final user = users[index].data() as Map<String, dynamic>;
+                      final userId = users[index].id;
+
+                      // Skip showing yourself in list
+                      if (userId == currentUser?.uid) return const SizedBox();
+
+                      final firstName = user['firstName'] ?? '';
+                      final lastName = user['lastName'] ?? '';
+                      final course = user['course'] ?? '';
+                      final profilePic = user['profilePic'] ?? '';
+
+                      return Card(
+                        margin: const EdgeInsets.symmetric(vertical: 6),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 2,
+                        child: ListTile(
+                          leading: profilePic.isNotEmpty
+                              ? CircleAvatar(
+                                  backgroundImage: NetworkImage(profilePic),
+                                  radius: 25,
+                                )
+                              : const CircleAvatar(
+                                  radius: 25,
+                                  backgroundColor: Colors.grey,
+                                  child:
+                                      Icon(Icons.person, color: Colors.white),
+                                ),
+                          title: Text(
+                            "$firstName $lastName",
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          subtitle: Text(
+                            course,
+                            style: const TextStyle(color: Colors.black54),
+                          ),
+                          onTap: () {
+                            // show bottom modal for this user's profile
+                            showProfileModal(context, userData: user);
+                          },
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ],
           ),
         ),
       ),
