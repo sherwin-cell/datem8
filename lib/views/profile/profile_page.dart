@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -38,23 +39,21 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _loadProfile() async {
     if (currentUser == null) return;
+
     try {
       final doc = await FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser!.uid)
           .get();
 
-      if (!doc.exists) {
-        setState(() => _isLoading = false);
-        return;
-      }
+      if (!doc.exists) return setState(() => _isLoading = false);
 
       final data = doc.data()!;
-      setState(() {
-        final firstName = (data['firstName'] ?? '').toString();
-        final lastName = (data['lastName'] ?? '').toString();
-        final nameField = (data['name'] ?? '').toString();
+      final firstName = (data['firstName'] ?? '').toString();
+      final lastName = (data['lastName'] ?? '').toString();
+      final nameField = (data['name'] ?? '').toString();
 
+      setState(() {
         _fullName = nameField.isNotEmpty ? nameField : '$firstName $lastName';
         _bio = data['bio'] ?? '';
         _age = data['age'] ?? 0;
@@ -65,7 +64,7 @@ class _ProfilePageState extends State<ProfilePage> {
         _interestedIn = data['interestedIn'] ?? '';
         _createdAt = (data['createdAt'] as Timestamp?)?.toDate();
         _interests = (data['interests'] is List)
-            ? (data['interests'] as List).map((e) => e.toString()).toList()
+            ? List<String>.from(data['interests'])
             : [];
         _isLoading = false;
       });
@@ -257,9 +256,7 @@ class _ProfilePageState extends State<ProfilePage> {
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return const Padding(
             padding: EdgeInsets.all(16),
-            child: Center(
-              child: Text("You haven’t posted anything yet."),
-            ),
+            child: Center(child: Text("You haven’t posted anything yet.")),
           );
         }
 
@@ -278,12 +275,11 @@ class _ProfilePageState extends State<ProfilePage> {
                         .toDate()
                     : null;
 
-            final imageUrls = (data['imageUrls'] != null &&
-                    data['imageUrls'] is List)
-                ? (data['imageUrls'] as List).map((e) => e.toString()).toList()
-                : data['imageUrl'] != null
+            final imageUrls = (data['imageUrls'] is List)
+                ? List<String>.from(data['imageUrls'])
+                : (data['imageUrl'] != null
                     ? [data['imageUrl'].toString()]
-                    : <String>[];
+                    : <String>[]);
 
             return _buildSwipeablePost(imageUrls, caption, createdAt);
           },
@@ -317,40 +313,38 @@ class _ProfilePageState extends State<ProfilePage> {
                       controller: pageController,
                       itemCount: imageUrls.length,
                       onPageChanged: (index) => currentIndex.value = index,
-                      itemBuilder: (context, index) {
-                        return Image.network(
-                          imageUrls[index],
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          loadingBuilder: (context, child, progress) =>
-                              progress == null
-                                  ? child
-                                  : const Center(
-                                      child: CircularProgressIndicator(),
-                                    ),
-                        );
-                      },
+                      itemBuilder: (context, index) => Image.network(
+                        imageUrls[index],
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        loadingBuilder: (context, child, progress) =>
+                            progress == null
+                                ? child
+                                : const Center(
+                                    child: CircularProgressIndicator()),
+                      ),
                     ),
                   ),
-                  // ✅ Show dots only if multiple images
+                  // ✅ Simple clean dots
                   if (imageUrls.length > 1)
-                    ValueListenableBuilder<int>(
-                      valueListenable: currentIndex,
-                      builder: (context, value, _) => Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Row(
+                    Positioned(
+                      bottom: 10,
+                      child: ValueListenableBuilder<int>(
+                        valueListenable: currentIndex,
+                        builder: (context, value, _) => Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: List.generate(
                             imageUrls.length,
                             (i) => AnimatedContainer(
-                              duration: const Duration(milliseconds: 250),
-                              margin: const EdgeInsets.symmetric(horizontal: 3),
-                              width: value == i ? 10 : 6,
-                              height: 6,
+                              duration: const Duration(milliseconds: 300),
+                              margin: const EdgeInsets.symmetric(horizontal: 4),
+                              height: 8,
+                              width: value == i ? 20 : 8,
                               decoration: BoxDecoration(
-                                color:
-                                    value == i ? Colors.white : Colors.white54,
-                                borderRadius: BorderRadius.circular(4),
+                                color: value == i
+                                    ? Colors.deepPurple
+                                    : Colors.grey[400],
+                                borderRadius: BorderRadius.circular(10),
                               ),
                             ),
                           ),
@@ -366,10 +360,8 @@ class _ProfilePageState extends State<ProfilePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (caption.isNotEmpty)
-                  Text(
-                    caption,
-                    style: const TextStyle(fontSize: 15, height: 1.4),
-                  ),
+                  Text(caption,
+                      style: const TextStyle(fontSize: 15, height: 1.4)),
                 if (createdAt != null)
                   Text(
                     DateFormat.yMMMd().add_jm().format(createdAt),

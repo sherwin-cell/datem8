@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:datem8/services/cloudinary_service.dart';
 import 'package:datem8/views/post/new_post_page.dart';
+import 'package:datem8/widgets/profile_modal.dart'; // ✅ Added import
 import 'comments_section.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -18,13 +19,11 @@ class ExplorePage extends StatefulWidget {
 
 class _ExplorePageState extends State<ExplorePage> {
   final _firestore = FirebaseFirestore.instance;
-
-  // Track current page per post
   final Map<String, int> _currentPages = {};
 
   Future<void> _refreshPosts() async => setState(() {});
 
-  Future<Map<String, String>> _getUserInfo(String userId) async {
+  Future<Map<String, dynamic>> _getUserInfo(String userId) async {
     try {
       final doc = await _firestore.collection('users').doc(userId).get();
       if (!doc.exists) return {'name': 'Unknown', 'avatar': ''};
@@ -32,6 +31,10 @@ class _ExplorePageState extends State<ExplorePage> {
       return {
         'name': data['name'] ?? 'Unknown',
         'avatar': data['profilePic'] ?? '',
+        'email': data['email'] ?? '',
+        'firstName': data['firstName'] ?? '',
+        'lastName': data['lastName'] ?? '',
+        'profilePic': data['profilePic'] ?? '',
       };
     } catch (_) {
       return {'name': 'Unknown', 'avatar': ''};
@@ -110,16 +113,21 @@ class _ExplorePageState extends State<ExplorePage> {
     );
   }
 
+  void _showProfileModal(BuildContext context, Map<String, dynamic> userData) {
+    showProfileModal(context, userData: userData);
+  }
+
   @override
   Widget build(BuildContext context) {
     final postsRef =
         _firestore.collection('posts').orderBy('createdAt', descending: true);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF1E5EF),
+      backgroundColor: const Color(0xFFF5F3F7),
       appBar: AppBar(
         title: const Text('Explore'),
         backgroundColor: const Color(0xFF6A6969),
+        elevation: 0,
         automaticallyImplyLeading: false,
       ),
       body: RefreshIndicator(
@@ -134,26 +142,26 @@ class _ExplorePageState extends State<ExplorePage> {
             final posts = snapshot.data!.docs;
 
             return ListView.builder(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(10),
               itemCount: posts.length + 1,
               itemBuilder: (context, index) {
-                // New post card at top
+                // 🔹 New post box
                 if (index == 0) {
                   final uid = FirebaseAuth.instance.currentUser?.uid;
                   if (uid == null) return const SizedBox();
 
-                  return FutureBuilder<Map<String, String>>(
+                  return FutureBuilder<Map<String, dynamic>>(
                     future: _getUserInfo(uid),
                     builder: (context, snap) {
                       final avatar = snap.data?['avatar'] ?? '';
                       return GestureDetector(
                         onTap: _openNewPost,
                         child: Container(
-                          margin: const EdgeInsets.symmetric(vertical: 8),
-                          padding: const EdgeInsets.all(10),
+                          padding: const EdgeInsets.all(12),
+                          margin: const EdgeInsets.only(bottom: 12),
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(16),
                             boxShadow: const [
                               BoxShadow(
                                 color: Colors.black12,
@@ -165,12 +173,13 @@ class _ExplorePageState extends State<ExplorePage> {
                           child: Row(
                             children: [
                               CircleAvatar(
-                                radius: 20,
+                                radius: 22,
                                 backgroundImage: avatar.isNotEmpty
                                     ? NetworkImage(avatar)
                                     : null,
                                 child: avatar.isEmpty
-                                    ? const Icon(Icons.person)
+                                    ? const Icon(Icons.person,
+                                        color: Colors.grey)
                                     : null,
                               ),
                               const SizedBox(width: 12),
@@ -189,7 +198,7 @@ class _ExplorePageState extends State<ExplorePage> {
                   );
                 }
 
-                // Existing posts
+                // 🔹 Post cards
                 final postDoc = posts[index - 1];
                 final postData = postDoc.data() as Map<String, dynamic>;
                 final caption = postData['caption'] ?? '';
@@ -199,60 +208,87 @@ class _ExplorePageState extends State<ExplorePage> {
                     : DateTime.now();
 
                 final images = postData['imageUrls'] != null
-                    ? List<String>.from((postData['imageUrls'] as List<dynamic>)
+                    ? List<String>.from((postData['imageUrls'] as List)
                         .map((e) => e.toString()))
                     : postData['imageUrl'] != null
                         ? [postData['imageUrl'].toString()]
                         : [];
 
-                return FutureBuilder<Map<String, String>>(
+                return FutureBuilder<Map<String, dynamic>>(
                   future: _getUserInfo(userId),
                   builder: (context, snap) {
                     final user = snap.data ?? {'name': 'Unknown', 'avatar': ''};
                     final currentPage = _currentPages[postDoc.id] ?? 0;
 
-                    return Card(
-                      margin: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 6,
+                            offset: Offset(0, 3),
+                          ),
+                        ],
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // User info
+                          // 🧍 User Info
                           ListTile(
-                            leading: CircleAvatar(
-                              radius: 20,
-                              backgroundImage: user['avatar']!.isNotEmpty
-                                  ? NetworkImage(user['avatar']!)
-                                  : null,
-                              child: user['avatar']!.isEmpty
-                                  ? const Icon(Icons.person)
-                                  : null,
+                            contentPadding:
+                                const EdgeInsets.symmetric(horizontal: 14),
+                            leading: GestureDetector(
+                              onTap: () => _showProfileModal(context, user),
+                              child: CircleAvatar(
+                                radius: 22,
+                                backgroundImage: user['avatar']!.isNotEmpty
+                                    ? NetworkImage(user['avatar']!)
+                                    : null,
+                                child: user['avatar']!.isEmpty
+                                    ? const Icon(Icons.person,
+                                        color: Colors.grey)
+                                    : null,
+                              ),
                             ),
-                            title: Text(user['name']!,
+                            title: GestureDetector(
+                              onTap: () => _showProfileModal(context, user),
+                              child: Text(
+                                user['name']!,
                                 style: const TextStyle(
-                                    fontWeight: FontWeight.bold)),
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ),
                             subtitle: Text(
-                                DateFormat.yMMMd().add_jm().format(createdAt)),
+                              DateFormat.yMMMd().add_jm().format(createdAt),
+                              style: const TextStyle(
+                                color: Colors.grey,
+                                fontSize: 12,
+                              ),
+                            ),
                           ),
 
-                          // Post images
+                          // 🖼️ Images
                           if (images.isNotEmpty)
                             Column(
                               children: [
-                                SizedBox(
-                                  height: 250,
-                                  child: PageView.builder(
-                                    itemCount: images.length,
-                                    onPageChanged: (page) {
-                                      setState(() {
-                                        _currentPages[postDoc.id] = page;
-                                      });
-                                    },
-                                    itemBuilder: (context, i) => ClipRRect(
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: Image.network(
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(0),
+                                  child: SizedBox(
+                                    height: 260,
+                                    child: PageView.builder(
+                                      itemCount: images.length,
+                                      onPageChanged: (page) {
+                                        setState(() {
+                                          _currentPages[postDoc.id] = page;
+                                        });
+                                      },
+                                      itemBuilder: (context, i) =>
+                                          Image.network(
                                         images[i],
                                         fit: BoxFit.cover,
                                         width: double.infinity,
@@ -260,11 +296,10 @@ class _ExplorePageState extends State<ExplorePage> {
                                     ),
                                   ),
                                 ),
-                                // Page indicators
                                 if (images.length > 1)
                                   Padding(
-                                    padding:
-                                        const EdgeInsets.symmetric(vertical: 8),
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 10),
                                     child: Row(
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,
@@ -272,17 +307,17 @@ class _ExplorePageState extends State<ExplorePage> {
                                           List.generate(images.length, (i) {
                                         return AnimatedContainer(
                                           duration:
-                                              const Duration(milliseconds: 250),
+                                              const Duration(milliseconds: 300),
                                           margin: const EdgeInsets.symmetric(
                                               horizontal: 4),
-                                          width: i == currentPage ? 10 : 8,
-                                          height: i == currentPage ? 10 : 8,
+                                          height: 8,
+                                          width: i == currentPage ? 20 : 8,
                                           decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
                                             color: i == currentPage
-                                                ? Colors.black
-                                                : Colors.grey[400]
-                                                    ?.withOpacity(0.6),
+                                                ? const Color(0xFF6A1B9A)
+                                                : Colors.grey[400],
+                                            borderRadius:
+                                                BorderRadius.circular(10),
                                           ),
                                         );
                                       }),
@@ -291,18 +326,23 @@ class _ExplorePageState extends State<ExplorePage> {
                               ],
                             ),
 
-                          // Caption
+                          // ✍️ Caption
                           if (caption.isNotEmpty)
                             Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: Text(caption,
-                                  style: const TextStyle(fontSize: 16)),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 10),
+                              child: Text(
+                                caption,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  height: 1.5,
+                                ),
+                              ),
                             ),
 
-                          // Reactions and comments
+                          // 💬 Reactions & Comments
                           Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 12.0),
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
                             child: StreamBuilder<DocumentSnapshot>(
                               stream: postDoc.reference.snapshots(),
                               builder: (context, snap) {
@@ -327,60 +367,72 @@ class _ExplorePageState extends State<ExplorePage> {
                                   builder: (context, commentSnap) {
                                     final commentCount =
                                         commentSnap.data?.docs.length ?? 0;
-                                    return Row(
-                                      children: [
-                                        GestureDetector(
-                                          onTap: () =>
-                                              _updateReaction(postDoc.id, '❤️'),
-                                          onLongPress: () async {
-                                            final emoji =
-                                                await _showEmojiPicker(context);
-                                            if (emoji != null)
-                                              _updateReaction(
-                                                  postDoc.id, emoji);
-                                          },
-                                          child: Text(
-                                            userReaction.isNotEmpty
-                                                ? userReaction
-                                                : '❤️',
-                                            style: GoogleFonts.notoColorEmoji(
-                                                fontSize: 22),
+                                    return Padding(
+                                      padding:
+                                          const EdgeInsets.only(bottom: 12),
+                                      child: Row(
+                                        children: [
+                                          GestureDetector(
+                                            onTap: () => _updateReaction(
+                                                postDoc.id, '❤️'),
+                                            onLongPress: () async {
+                                              final emoji =
+                                                  await _showEmojiPicker(
+                                                      context);
+                                              if (emoji != null) {
+                                                _updateReaction(
+                                                    postDoc.id, emoji);
+                                              }
+                                            },
+                                            child: Text(
+                                              userReaction.isNotEmpty
+                                                  ? userReaction
+                                                  : '❤️',
+                                              style: GoogleFonts.notoColorEmoji(
+                                                  fontSize: 22),
+                                            ),
                                           ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        if (counts.isNotEmpty)
-                                          Row(
-                                            children: counts.entries
-                                                .map(
-                                                  (e) => Padding(
-                                                    padding: const EdgeInsets
-                                                        .symmetric(
-                                                        horizontal: 4),
-                                                    child: Text(
+                                          const SizedBox(width: 6),
+                                          if (counts.isNotEmpty)
+                                            Row(
+                                              children: counts.entries
+                                                  .map(
+                                                    (e) => Padding(
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
+                                                          horizontal: 3),
+                                                      child: Text(
                                                         "${e.key}${e.value}",
                                                         style: GoogleFonts
                                                             .notoColorEmoji(
-                                                                fontSize: 18)),
-                                                  ),
-                                                )
-                                                .toList(),
+                                                                fontSize: 18),
+                                                      ),
+                                                    ),
+                                                  )
+                                                  .toList(),
+                                            ),
+                                          const Spacer(),
+                                          IconButton(
+                                            icon: const Icon(
+                                                Icons.comment_outlined,
+                                                size: 22),
+                                            onPressed: () =>
+                                                _openComments(postDoc.id),
                                           ),
-                                        const SizedBox(width: 16),
-                                        IconButton(
-                                          icon: const Icon(
-                                              Icons.comment_outlined),
-                                          onPressed: () =>
-                                              _openComments(postDoc.id),
-                                        ),
-                                        Text("$commentCount"),
-                                      ],
+                                          Text(
+                                            "$commentCount",
+                                            style: const TextStyle(
+                                                color: Colors.grey),
+                                          ),
+                                          const SizedBox(width: 6),
+                                        ],
+                                      ),
                                     );
                                   },
                                 );
                               },
                             ),
                           ),
-                          const SizedBox(height: 12),
                         ],
                       ),
                     );

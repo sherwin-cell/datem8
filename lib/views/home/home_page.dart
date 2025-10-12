@@ -47,10 +47,8 @@ class _HomePageState extends State<HomePage> {
         reverseTransitionDuration: const Duration(milliseconds: 600),
         pageBuilder: (_, __, ___) => page,
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          final curved = CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeInOutCubic,
-          );
+          final curved =
+              CurvedAnimation(parent: animation, curve: Curves.easeInOutCubic);
           return FadeTransition(
             opacity: curved,
             child: ScaleTransition(
@@ -70,25 +68,63 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text(
-          "Home",
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
         backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
         elevation: 2,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.account_circle_rounded,
-                color: Colors.deepPurple),
-            onPressed: () {
-              // show current user's modal
-              showProfileModal(context);
-            },
-          ),
-        ],
+        centerTitle: false,
+        title: StreamBuilder<DocumentSnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('users')
+              .doc(FirebaseAuth.instance.currentUser!.uid)
+              .snapshots(),
+          builder: (context, snapshot) {
+            Widget avatar = const CircleAvatar(
+              radius: 18,
+              backgroundColor: Colors.deepPurple,
+              child: Icon(Icons.person, size: 18, color: Colors.white),
+            );
+            String greetingText = "Hello 👋";
+
+            if (snapshot.hasData && snapshot.data!.exists) {
+              final userData = snapshot.data!.data() as Map<String, dynamic>?;
+              final firstName = (userData?['firstName'] ?? 'User') as String;
+              greetingText = "Hello, $firstName 👋";
+
+              final profilePic = (userData?['profilePic'] ?? '') as String;
+              if (profilePic.isNotEmpty) {
+                avatar = CircleAvatar(
+                  radius: 18,
+                  backgroundImage: NetworkImage(profilePic),
+                );
+              }
+            }
+
+            return InkWell(
+              onTap: () => showProfileModal(context),
+              borderRadius: BorderRadius.circular(24),
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    avatar,
+                    const SizedBox(width: 10),
+                    Text(
+                      greetingText,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Colors.deepPurple,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
       ),
+
+      // Main Body
       body: RefreshIndicator(
         onRefresh: () async => setState(() {}),
         child: SingleChildScrollView(
@@ -130,6 +166,7 @@ class _HomePageState extends State<HomePage> {
                                 height: 160,
                                 fit: BoxFit.cover,
                               ),
+                              // subtle overlay only — no text
                               Container(
                                 width: 220,
                                 height: 160,
@@ -137,22 +174,10 @@ class _HomePageState extends State<HomePage> {
                                   gradient: LinearGradient(
                                     colors: [
                                       Colors.transparent,
-                                      Colors.black38
+                                      Colors.black26,
                                     ],
                                     begin: Alignment.topCenter,
                                     end: Alignment.bottomCenter,
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                left: 12,
-                                bottom: 10,
-                                child: Text(
-                                  dept["name"],
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ),
@@ -192,9 +217,7 @@ class _HomePageState extends State<HomePage> {
                   if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                     return const Padding(
                       padding: EdgeInsets.all(40),
-                      child: Center(
-                        child: Text("No users found 😕"),
-                      ),
+                      child: Center(child: Text("No users found 😕")),
                     );
                   }
 
@@ -208,7 +231,6 @@ class _HomePageState extends State<HomePage> {
                       final user = users[index].data() as Map<String, dynamic>;
                       final userId = users[index].id;
 
-                      // Skip showing yourself in list
                       if (userId == currentUser?.uid) return const SizedBox();
 
                       final firstName = user['firstName'] ?? '';
@@ -246,10 +268,8 @@ class _HomePageState extends State<HomePage> {
                             course,
                             style: const TextStyle(color: Colors.black54),
                           ),
-                          onTap: () {
-                            // show bottom modal for this user's profile
-                            showProfileModal(context, userData: user);
-                          },
+                          onTap: () =>
+                              showProfileModal(context, userData: user),
                         ),
                       );
                     },
