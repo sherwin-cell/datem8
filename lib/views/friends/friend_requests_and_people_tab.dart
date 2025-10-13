@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_database/firebase_database.dart';
 
 class FriendsRequestsAndPeopleTab extends StatefulWidget {
   final String currentUserId;
@@ -13,7 +14,7 @@ class FriendsRequestsAndPeopleTab extends StatefulWidget {
 
 class _FriendsRequestsAndPeopleTabState
     extends State<FriendsRequestsAndPeopleTab> {
-  final Set<String> _sentRequests = {}; // Sent requests
+  final Set<String> _sentRequests = {}; // Sent friend requests
   final Set<String> _friends = {}; // Current friends
 
   @override
@@ -23,6 +24,7 @@ class _FriendsRequestsAndPeopleTabState
     _loadSentRequests();
   }
 
+  // ✅ Load current friends from Firestore
   Future<void> _loadFriends() async {
     final doc = await FirebaseFirestore.instance
         .collection('friends')
@@ -36,6 +38,7 @@ class _FriendsRequestsAndPeopleTabState
     }
   }
 
+  // ✅ Load sent friend requests
   Future<void> _loadSentRequests() async {
     final snapshot = await FirebaseFirestore.instance
         .collection('friend_requests')
@@ -47,12 +50,14 @@ class _FriendsRequestsAndPeopleTabState
     });
   }
 
+  // ✅ Confirm a friend request and create chat automatically
   Future<void> _confirmFriend(String fromUserId, String reqId) async {
     final friendsRef = FirebaseFirestore.instance.collection('friends');
     final requestsRef =
         FirebaseFirestore.instance.collection('friend_requests');
+    final database = FirebaseDatabase.instance.ref(); // Realtime DB reference
 
-    // Add each other as friends
+    // 1️⃣ Add each other as friends in Firestore
     await friendsRef
         .doc(widget.currentUserId)
         .set({fromUserId: true}, SetOptions(merge: true));
@@ -60,16 +65,43 @@ class _FriendsRequestsAndPeopleTabState
         .doc(fromUserId)
         .set({widget.currentUserId: true}, SetOptions(merge: true));
 
-    // Delete the request
+    // 2️⃣ Delete the request
     await requestsRef.doc(reqId).delete();
 
-    // Update UI immediately
+    // 3️⃣ Create a chat entry in Realtime Database
+    final chatId = widget.currentUserId.hashCode <= fromUserId.hashCode
+        ? '${widget.currentUserId}-$fromUserId'
+        : '$fromUserId-${widget.currentUserId}';
+    final chatRef = database.child('chats').child(chatId);
+
+    final snapshot = await chatRef.get();
+    if (!snapshot.exists) {
+      await chatRef.set({
+        'participants': {
+          widget.currentUserId: true,
+          fromUserId: true,
+        },
+        'timestamp': ServerValue.timestamp,
+        'lastMessage': 'You are now friends! 👋',
+        'lastMessageSenderId': widget.currentUserId,
+      });
+
+      // Optionally, create a first message node
+      await chatRef.child('messages').push().set({
+        'senderId': widget.currentUserId,
+        'text': 'You are now friends! 👋',
+        'timestamp': ServerValue.timestamp,
+      });
+    }
+
+    // 4️⃣ Update local UI immediately
     setState(() {
-      _friends.add(fromUserId); // now the request will be filtered out
+      _friends.add(fromUserId);
       _sentRequests.remove(fromUserId);
     });
   }
 
+  // ✅ Delete a friend request
   Future<void> _deleteRequest(String reqId) async {
     await FirebaseFirestore.instance
         .collection('friend_requests')
@@ -77,6 +109,7 @@ class _FriendsRequestsAndPeopleTabState
         .delete();
   }
 
+  // ✅ Send a new friend request
   Future<void> _sendFriendRequest(String toUserId) async {
     final requestsRef =
         FirebaseFirestore.instance.collection('friend_requests');
@@ -99,6 +132,7 @@ class _FriendsRequestsAndPeopleTabState
     });
   }
 
+  // ✅ Reusable user tile
   Widget _buildUserTile(Map<String, dynamic> user,
       {required VoidCallback onAction, required String actionText}) {
     final profilePic = user['profilePic'] ?? '';
@@ -131,11 +165,13 @@ class _FriendsRequestsAndPeopleTabState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Friend Requests Section
+            // 🔹 Friend Requests Section
             const Padding(
               padding: EdgeInsets.all(12.0),
-              child: Text("Friend Requests",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              child: Text(
+                "Friend Requests",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
             ),
             StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
@@ -143,8 +179,9 @@ class _FriendsRequestsAndPeopleTabState
                   .where('to', isEqualTo: widget.currentUserId)
                   .snapshots(),
               builder: (context, snapshot) {
-                if (!snapshot.hasData)
+                if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
+                }
 
                 // Filter out requests that are already friends
                 final requests = snapshot.data!.docs
@@ -172,8 +209,9 @@ class _FriendsRequestsAndPeopleTabState
                           .doc(fromUserId)
                           .get(),
                       builder: (context, userSnapshot) {
-                        if (!userSnapshot.hasData)
+                        if (!userSnapshot.hasData) {
                           return const ListTile(title: Text("Loading..."));
+                        }
 
                         final user =
                             userSnapshot.data!.data() as Map<String, dynamic>;
@@ -216,18 +254,21 @@ class _FriendsRequestsAndPeopleTabState
               },
             ),
 
-            // People You May Know Section
+            // 🔹 People You May Know Section
             const Padding(
               padding: EdgeInsets.all(12.0),
-              child: Text("People You May Know",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              child: Text(
+                "People You May Know",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
             ),
             StreamBuilder<QuerySnapshot>(
               stream:
                   FirebaseFirestore.instance.collection('users').snapshots(),
               builder: (context, snapshot) {
-                if (!snapshot.hasData)
+                if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
+                }
 
                 final users = snapshot.data!.docs
                     .where((doc) => doc.id != widget.currentUserId)

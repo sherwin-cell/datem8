@@ -41,35 +41,43 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Future<void> _loadProfile() async {
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(widget.userId)
-        .get();
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.userId)
+          .get();
 
-    if (!mounted || !doc.exists) return;
+      if (!mounted || !doc.exists) return;
 
-    final data = doc.data()!;
-    setState(() {
-      _firstName = data['firstName'];
-      _lastName = data['lastName'];
-      _bio = data['bio'];
-      _age = data['age'];
-      _course = data['course'];
-      _department = data['department'];
-      _gender = data['gender'];
-      _interestedIn = data['interestedIn'];
-      _interests = List<String>.from(data['interests'] ?? []);
-      _profilePicUrl = data['profilePic'] ?? data['profileImageUrl'];
-      _isLoading = false;
-    });
+      final data = doc.data()!;
+      setState(() {
+        _firstName = data['firstName'] ?? '';
+        _lastName = data['lastName'] ?? '';
+        _bio = data['bio'] ?? '';
+        _age = data['age'];
+        _course = data['course'] ?? '';
+        _department = data['department'] ?? '';
+        _gender = data['gender'];
+        _interestedIn = data['interestedIn'];
+        _interests = List<String>.from(data['interests'] ?? []);
+        _profilePicUrl = data['profilePic'] ?? data['profileImageUrl'];
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to load profile: $e")),
+      );
+      setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _pickProfileImage() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile == null) return;
-
-    setState(() => _newProfilePic = File(pickedFile.path));
+    if (pickedFile != null) {
+      setState(() => _newProfilePic = File(pickedFile.path));
+    }
   }
 
   Future<void> _saveProfile() async {
@@ -103,13 +111,55 @@ class _EditProfilePageState extends State<EditProfilePage> {
       });
 
       if (!mounted) return;
-      Navigator.pop(context, true); // indicate successful update
+      Navigator.pop(context, true); // indicate success
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text("Error: $e")));
       setState(() => _isLoading = false);
     }
+  }
+
+  Widget _buildTextField({
+    required String label,
+    String? initialValue,
+    TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
+    void Function(String?)? onSaved,
+    int maxLines = 1,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: TextFormField(
+        initialValue: initialValue,
+        decoration: InputDecoration(labelText: label),
+        keyboardType: keyboardType,
+        validator: validator,
+        onSaved: onSaved,
+        maxLines: maxLines,
+      ),
+    );
+  }
+
+  Widget _buildDropdown<T>({
+    required String label,
+    required T? value,
+    required List<T> items,
+    required void Function(T?) onChanged,
+    String? Function(T?)? validator,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: DropdownButtonFormField<T>(
+        decoration: InputDecoration(labelText: label),
+        value: value,
+        items: items
+            .map((e) => DropdownMenuItem(value: e, child: Text(e.toString())))
+            .toList(),
+        onChanged: onChanged,
+        validator: validator,
+      ),
+    );
   }
 
   @override
@@ -142,27 +192,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    TextFormField(
+                    _buildTextField(
+                      label: "First Name",
                       initialValue: _firstName,
-                      decoration:
-                          const InputDecoration(labelText: "First Name"),
-                      validator: (v) =>
-                          v == null || v.isEmpty ? 'Required' : null,
+                      validator: (v) => v == null || v.isEmpty ? 'Required' : null,
                       onSaved: (v) => _firstName = v,
                     ),
-                    const SizedBox(height: 12),
-                    TextFormField(
+                    _buildTextField(
+                      label: "Last Name",
                       initialValue: _lastName,
-                      decoration: const InputDecoration(labelText: "Last Name"),
-                      validator: (v) =>
-                          v == null || v.isEmpty ? 'Required' : null,
+                      validator: (v) => v == null || v.isEmpty ? 'Required' : null,
                       onSaved: (v) => _lastName = v,
                     ),
-                    const SizedBox(height: 12),
-                    TextFormField(
+                    _buildTextField(
+                      label: "Age",
                       initialValue: _age?.toString(),
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: "Age"),
                       validator: (v) {
                         if (v == null || v.isEmpty) return 'Required';
                         final n = int.tryParse(v);
@@ -171,64 +216,43 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       },
                       onSaved: (v) => _age = int.parse(v!),
                     ),
-                    const SizedBox(height: 12),
-                    TextFormField(
+                    _buildTextField(
+                      label: "Course",
                       initialValue: _course,
-                      decoration: const InputDecoration(labelText: "Course"),
                       onSaved: (v) => _course = v,
                     ),
-                    const SizedBox(height: 12),
-                    TextFormField(
+                    _buildTextField(
+                      label: "Department",
                       initialValue: _department,
-                      decoration:
-                          const InputDecoration(labelText: "Department"),
                       onSaved: (v) => _department = v,
                     ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
+                    _buildDropdown<String>(
+                      label: "Gender",
                       value: _gender,
-                      decoration: const InputDecoration(labelText: "Gender"),
-                      items: ['Male', 'Female', 'Other']
-                          .map(
-                              (g) => DropdownMenuItem(value: g, child: Text(g)))
-                          .toList(),
+                      items: ['Male', 'Female', 'Other'],
                       onChanged: (v) => setState(() => _gender = v),
-                      validator: (v) =>
-                          v == null || v.isEmpty ? 'Required' : null,
+                      validator: (v) => v == null || v.isEmpty ? 'Required' : null,
                     ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
+                    _buildDropdown<String>(
+                      label: "Interested In",
                       value: _interestedIn,
-                      decoration:
-                          const InputDecoration(labelText: "Interested In"),
-                      items: ['Male', 'Female', 'Other']
-                          .map(
-                              (i) => DropdownMenuItem(value: i, child: Text(i)))
-                          .toList(),
+                      items: ['Male', 'Female', 'Other'],
                       onChanged: (v) => setState(() => _interestedIn = v),
-                      validator: (v) =>
-                          v == null || v.isEmpty ? 'Required' : null,
+                      validator: (v) => v == null || v.isEmpty ? 'Required' : null,
                     ),
-                    const SizedBox(height: 12),
-                    TextFormField(
+                    _buildTextField(
+                      label: "Bio",
                       initialValue: _bio,
-                      decoration: const InputDecoration(labelText: "Bio"),
                       maxLines: 3,
                       onSaved: (v) => _bio = v,
                     ),
-                    const SizedBox(height: 12),
-                    TextFormField(
+                    _buildTextField(
+                      label: "Interests (comma separated)",
                       initialValue: _interests.join(', '),
-                      decoration: const InputDecoration(
-                        labelText: "Interests (comma separated)",
-                      ),
                       onSaved: (v) {
-                        if (v != null && v.isNotEmpty) {
-                          _interests =
-                              v.split(',').map((e) => e.trim()).toList();
-                        } else {
-                          _interests = [];
-                        }
+                        _interests = v != null && v.isNotEmpty
+                            ? v.split(',').map((e) => e.trim()).toList()
+                            : [];
                       },
                     ),
                     const SizedBox(height: 24),

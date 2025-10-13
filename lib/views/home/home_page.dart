@@ -194,7 +194,7 @@ class _HomePageState extends State<HomePage> {
 
               // 👥 All Users Section
               const Text(
-                "All Users",
+                "People May You Know",
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
