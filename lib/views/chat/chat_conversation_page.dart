@@ -41,7 +41,6 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
     _checkBlockedStatus();
   }
 
@@ -59,7 +58,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     }
   }
 
-  Future<void> _sendMessage({String? imageUrl}) async {
+  Future<void> _sendMessage({List<String>? imageUrls}) async {
     if (_isBlocked) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -71,7 +70,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     }
 
     final text = _messageController.text.trim();
-    if (text.isEmpty && imageUrl == null) return;
+    if (text.isEmpty && (imageUrls == null || imageUrls.isEmpty)) return;
 
     try {
       final chatRef = _dbRef.child('chats/${widget.chatId}');
@@ -88,17 +87,15 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       await msgRef.set({
         'senderId': widget.currentUserId,
         'text': text,
-        'imageUrl': imageUrl ?? "",
+        'imageUrls': imageUrls ?? [],
         'timestamp': ServerValue.timestamp,
       });
 
       _messageController.clear();
       _scrollToBottom();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Failed to send message: $e")));
-      }
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Failed to send message: $e")));
     }
   }
 
@@ -106,10 +103,8 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     try {
       await _dbRef.child('chats/${widget.chatId}/messages/$msgKey').remove();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Failed to unsend message: $e")));
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to unsend message: $e")));
     }
   }
 
@@ -121,13 +116,15 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   }
 
   void _scrollToBottom() {
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent + 80,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    }
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   Stream<List<Map<String, dynamic>>> _messagesStream() {
@@ -139,32 +136,33 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
         map['key'] = e.key;
         return map;
       }).toList();
-      msgs.sort((a, b) => (a['timestamp'] ?? 0).compareTo(a['timestamp'] ?? 0));
+
+      msgs.sort((a, b) => (a['timestamp'] ?? 0).compareTo(b['timestamp'] ?? 0));
       return msgs;
     });
   }
 
-  Future<void> _pickImage() async {
+  /// ✅ Pick and upload multiple images
+  Future<void> _pickImages() async {
     try {
-      final imageUrl = await widget.cloudinaryService.pickAndUploadImage();
-      if (imageUrl != null) await _sendMessage(imageUrl: imageUrl);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text("Failed to send image: $e")));
+      final imageUrls =
+          await widget.cloudinaryService.pickAndUploadMultipleImages();
+      if (imageUrls.isNotEmpty) {
+        await _sendMessage(imageUrls: imageUrls);
       }
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Failed to send images: $e")));
     }
   }
 
   Future<void> _takePhoto() async {
     try {
       final imageUrl = await widget.cloudinaryService.takePhotoAndUpload();
-      if (imageUrl != null) await _sendMessage(imageUrl: imageUrl);
+      if (imageUrl != null) await _sendMessage(imageUrls: [imageUrl]);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text("Failed to send photo: $e")));
-      }
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Failed to send photo: $e")));
     }
   }
 
@@ -173,10 +171,8 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       await _dbRef.child('chats/${widget.chatId}').remove();
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Failed to delete conversation: $e")));
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to delete conversation: $e")));
     }
   }
 
@@ -186,19 +182,28 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
         .format(DateTime.fromMillisecondsSinceEpoch(timestamp));
   }
 
+  /// ✅ Build message bubble (now supports multiple images)
   Widget _buildMessage(Map<String, dynamic> msg) {
     final isMe = msg['senderId'] == widget.currentUserId;
     final msgKey = msg['key'];
     final isTapped = _tappedMessages.contains(msgKey);
     final reactionEmoji = msg['reaction']?['emoji'] ?? _reactions[msgKey];
 
+    final List<dynamic> imageUrls = (msg['imageUrls'] ??
+            (msg['imageUrl'] != null && msg['imageUrl'] != ""
+                ? [msg['imageUrl']]
+                : []))
+        .cast<String>();
+
+    final hasImages = imageUrls.isNotEmpty;
+    final hasText = (msg['text'] ?? "").isNotEmpty;
+
     return GestureDetector(
       onTap: () {
         setState(() {
-          if (isTapped)
-            _tappedMessages.remove(msgKey);
-          else
-            _tappedMessages.add(msgKey);
+          isTapped
+              ? _tappedMessages.remove(msgKey)
+              : _tappedMessages.add(msgKey);
         });
       },
       onLongPress: () async {
@@ -209,70 +214,81 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
         );
 
         if (action != null) {
-          if (action == 'delete')
+          if (action == 'delete') {
             _unsendMessage(msgKey);
-          else if (_reactionEmojis.contains(action))
+          } else if (_reactionEmojis.contains(action)) {
             _reactToMessage(msgKey, action);
+          }
         }
       },
       child: Align(
         alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-          decoration: BoxDecoration(
-            color: isMe ? Colors.blue[300] : Colors.grey[300],
-            borderRadius: BorderRadius.circular(30),
-          ),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.75,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if ((msg['imageUrl'] ?? "").isNotEmpty)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
+          margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+          child: Column(
+            crossAxisAlignment:
+                isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            children: [
+              // ✅ Multiple images displayed in grid
+              if (hasImages)
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 6,
+                    mainAxisSpacing: 6,
+                  ),
+                  itemCount: imageUrls.length,
+                  itemBuilder: (context, i) => ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
                     child: Image.network(
-                      msg['imageUrl'],
-                      width: MediaQuery.of(context).size.width * 0.6,
-                      height: MediaQuery.of(context).size.width * 0.6,
+                      imageUrls[i],
                       fit: BoxFit.cover,
+                      width: MediaQuery.of(context).size.width * 0.4,
+                      height: MediaQuery.of(context).size.width * 0.4,
                     ),
                   ),
-                if ((msg['text'] ?? "").isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      msg['text'],
-                      style: TextStyle(
-                          color: isMe ? Colors.white : Colors.black87),
-                      softWrap: true,
-                      overflow: TextOverflow.visible,
+                ),
+
+              // ✅ Text message bubble
+              if (hasText)
+                Container(
+                  margin: EdgeInsets.only(top: hasImages ? 6 : 0),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: isMe ? Colors.blue[300] : Colors.grey[300],
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: Text(
+                    msg['text'],
+                    style: TextStyle(
+                      color: isMe ? Colors.white : Colors.black87,
+                      fontSize: 15,
                     ),
                   ),
-                if (reactionEmoji != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      reactionEmoji,
-                      style: const TextStyle(fontSize: 18),
+                ),
+
+              if (reactionEmoji != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child:
+                      Text(reactionEmoji, style: const TextStyle(fontSize: 18)),
+                ),
+
+              if (isTapped)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(
+                    _formatTime(msg['timestamp']),
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: isMe ? Colors.white70 : Colors.black54,
                     ),
                   ),
-                if (isTapped)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Text(
-                      _formatTime(msg['timestamp']),
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: isMe ? Colors.white70 : Colors.black54,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+                ),
+            ],
           ),
         ),
       ),
@@ -294,25 +310,25 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       color: Colors.white,
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.photo),
-            color: const Color.fromARGB(255, 78, 80, 78),
-            onPressed: _pickImage,
+            icon: const Icon(Icons.photo_library),
+            color: Colors.grey[700],
+            onPressed: _pickImages, // ✅ multi image picker
           ),
           IconButton(
             icon: const Icon(Icons.camera_alt),
-            color: const Color.fromARGB(255, 72, 71, 70),
+            color: Colors.grey[700],
             onPressed: _takePhoto,
           ),
           Expanded(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: const Color.fromARGB(255, 156, 151, 151),
+                color: Colors.grey[300],
                 borderRadius: BorderRadius.circular(30),
               ),
               child: TextField(
@@ -342,26 +358,31 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
         actions: [
           PopupMenuButton<String>(
             onSelected: (value) async {
-              if (value == 'view_profile') {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => OtherUserProfilePage(
-                      userId: widget.otherUserId,
-                      userName: widget.otherUserName,
-                      cloudinaryService: widget.cloudinaryService,
-                      avatarUrl: "", // optional
+              switch (value) {
+                case 'view_profile':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => OtherUserProfilePage(
+                        userId: widget.otherUserId,
+                        userName: widget.otherUserName,
+                        cloudinaryService: widget.cloudinaryService,
+                        avatarUrl: "",
+                      ),
                     ),
-                  ),
-                );
-              } else if (value == 'block') {
-                await _blockedService.blockUser(
-                    widget.currentUserId, widget.otherUserId);
-              } else if (value == 'unblock') {
-                await _blockedService.unblockUser(
-                    widget.currentUserId, widget.otherUserId);
-              } else if (value == 'delete') {
-                await _deleteConversation();
+                  );
+                  break;
+                case 'block':
+                  await _blockedService.blockUser(
+                      widget.currentUserId, widget.otherUserId);
+                  break;
+                case 'unblock':
+                  await _blockedService.unblockUser(
+                      widget.currentUserId, widget.otherUserId);
+                  break;
+                case 'delete':
+                  await _deleteConversation();
+                  break;
               }
               await _checkBlockedStatus();
             },
@@ -385,8 +406,9 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
             child: StreamBuilder<List<Map<String, dynamic>>>(
               stream: _messagesStream(),
               builder: (context, snapshot) {
-                if (!snapshot.hasData)
+                if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
+                }
                 final messages = snapshot.data!;
                 WidgetsBinding.instance
                     .addPostFrameCallback((_) => _scrollToBottom());

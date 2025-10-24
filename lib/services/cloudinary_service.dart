@@ -6,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class CloudinaryService {
   final Cloudinary _cloudinary;
+  final ImagePicker _picker = ImagePicker();
 
   CloudinaryService()
       : _cloudinary = Cloudinary.full(
@@ -14,31 +15,40 @@ class CloudinaryService {
           cloudName: dotenv.env['CLOUDINARY_CLOUD_NAME'] ?? '',
         );
 
-  final ImagePicker _picker = ImagePicker();
-
-  /// Pick image from gallery
+  /// 📁 Pick a single image from gallery
   Future<File?> pickImage() async {
     try {
       final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-      if (pickedFile != null) return File(pickedFile.path);
+      return pickedFile != null ? File(pickedFile.path) : null;
     } catch (e) {
-      debugPrint("Image picking error: $e");
+      debugPrint("❌ Image picking error: $e");
+      return null;
     }
-    return null;
   }
 
-  /// Take a photo using camera
+  /// 📁 Pick multiple images from gallery
+  Future<List<File>> pickMultipleImages() async {
+    try {
+      final List<XFile> files = await _picker.pickMultiImage();
+      return files.map((x) => File(x.path)).toList();
+    } catch (e) {
+      debugPrint("❌ Multi-image picking error: $e");
+      return [];
+    }
+  }
+
+  /// 📸 Take a photo using the camera
   Future<File?> takePhoto() async {
     try {
       final pickedFile = await _picker.pickImage(source: ImageSource.camera);
-      if (pickedFile != null) return File(pickedFile.path);
+      return pickedFile != null ? File(pickedFile.path) : null;
     } catch (e) {
-      debugPrint("Camera capture error: $e");
+      debugPrint("❌ Camera capture error: $e");
+      return null;
     }
-    return null;
   }
 
-  /// Upload image to Cloudinary and return the URL
+  /// ☁️ Upload a single image to Cloudinary and return its secure URL
   Future<String?> uploadImage(File imageFile,
       {String folder = 'datem8'}) async {
     try {
@@ -51,27 +61,48 @@ class CloudinaryService {
       );
 
       if (response.isSuccessful) {
-        return response.secureUrl; // Full URL
+        debugPrint("✅ Uploaded: ${response.secureUrl}");
+        return response.secureUrl;
       } else {
-        debugPrint('Cloudinary upload failed: ${response.error}');
+        debugPrint('❌ Cloudinary upload failed: ${response.error}');
       }
     } catch (e) {
-      debugPrint("Cloudinary upload exception: $e");
+      debugPrint("❌ Cloudinary upload exception: $e");
     }
     return null;
   }
 
-  /// Pick an image from gallery and upload directly
+  /// 📤 Pick an image from gallery and upload it directly
   Future<String?> pickAndUploadImage({String folder = 'datem8'}) async {
     final file = await pickImage();
-    if (file != null) return await uploadImage(file, folder: folder);
-    return null;
+    if (file == null) return null;
+    return await uploadImage(file, folder: folder);
   }
 
-  /// Take a photo with camera and upload directly
+  /// 📤 Take a photo and upload it directly
   Future<String?> takePhotoAndUpload({String folder = 'datem8'}) async {
     final file = await takePhoto();
-    if (file != null) return await uploadImage(file, folder: folder);
-    return null;
+    if (file == null) return null;
+    return await uploadImage(file, folder: folder);
+  }
+
+  /// 📤 Pick and upload **multiple images** (returns list of URLs)
+  Future<List<String>> pickAndUploadMultipleImages(
+      {String folder = 'datem8'}) async {
+    try {
+      final files = await pickMultipleImages();
+      if (files.isEmpty) return [];
+
+      final List<Future<String?>> uploads =
+          files.map((file) => uploadImage(file, folder: folder)).toList();
+      final results = await Future.wait(uploads);
+
+      final urls = results.whereType<String>().toList();
+      debugPrint("✅ Uploaded ${urls.length} of ${files.length} images.");
+      return urls;
+    } catch (e) {
+      debugPrint("❌ pickAndUploadMultipleImages error: $e");
+      return [];
+    }
   }
 }
