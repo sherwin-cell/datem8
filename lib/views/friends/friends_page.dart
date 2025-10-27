@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:datem8/services/cloudinary_service.dart';
 import 'friends_list_tab.dart';
-import 'friend_requests_and_people_tab.dart'; // merged tab
+import 'friend_requests_and_people_tab.dart';
 
 class FriendsPage extends StatefulWidget {
   final CloudinaryService cloudinaryService;
@@ -49,37 +49,25 @@ class _FriendsPageState extends State<FriendsPage>
       appBar: AppBar(
         title: const Text(
           "Friends",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF342F2F),
-          ),
+          style:
+              TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF342F2F)),
         ),
         backgroundColor: Colors.white,
         elevation: 2,
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
-          labelPadding: const EdgeInsets.symmetric(horizontal: 20),
           labelColor: Colors.redAccent,
           unselectedLabelColor: Colors.black54,
           indicator: const UnderlineTabIndicator(
             borderSide: BorderSide(width: 3.0, color: Colors.redAccent),
             insets: EdgeInsets.symmetric(horizontal: 16),
           ),
-          labelStyle: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-          ),
-          unselectedLabelStyle: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
           tabs: _tabs,
         ),
       ),
       body: TabBarView(
         controller: _tabController,
-        physics: const BouncingScrollPhysics(),
         children: _tabViews,
       ),
     );

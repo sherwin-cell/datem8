@@ -118,9 +118,8 @@ class _SignUpPageState extends State<SignUpPage> {
                 decoration: InputDecoration(
                   labelText: "Password",
                   suffixIcon: GestureDetector(
-                    onLongPress: () => setState(() => _obscurePassword = false),
-                    onLongPressUp: () =>
-                        setState(() => _obscurePassword = true),
+                    onTap: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
                     child: Transform.scale(
                       scale: 0.9,
                       child: Icon(
@@ -141,10 +140,8 @@ class _SignUpPageState extends State<SignUpPage> {
                 decoration: InputDecoration(
                   labelText: "Confirm Password",
                   suffixIcon: GestureDetector(
-                    onLongPress: () =>
-                        setState(() => _obscureConfirmPassword = false),
-                    onLongPressUp: () =>
-                        setState(() => _obscureConfirmPassword = true),
+                    onTap: () => setState(() =>
+                        _obscureConfirmPassword = !_obscureConfirmPassword),
                     child: Transform.scale(
                       scale: 0.9,
                       child: Icon(

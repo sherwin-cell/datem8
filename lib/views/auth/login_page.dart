@@ -126,15 +126,14 @@ class _LoginPageState extends State<LoginPage> {
                   prefixIcon: const Icon(AppIcons.lock),
                   border: const OutlineInputBorder(),
                   suffixIcon: GestureDetector(
-                    onLongPress: () => setState(() => _obscurePassword = false),
-                    onLongPressUp: () =>
-                        setState(() => _obscurePassword = true),
+                    onTap: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
                     child: Transform.scale(
                       scale: 0.9,
                       child: Icon(
                         _obscurePassword
-                            ? AppIcons.visibility
-                            : AppIcons.visibilityOff,
+                            ? AppIcons.visibilityOff
+                            : AppIcons.visibility,
                         color: AppColors.iconColor,
                         size: 18,
                       ),

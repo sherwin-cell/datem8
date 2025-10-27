@@ -14,31 +14,14 @@ class FriendsRequestsAndPeopleTab extends StatefulWidget {
 
 class _FriendsRequestsAndPeopleTabState
     extends State<FriendsRequestsAndPeopleTab> {
-  final Set<String> _sentRequests = {}; // Sent friend requests
-  final Set<String> _friends = {}; // Current friends
+  final Set<String> _sentRequests = {};
 
   @override
   void initState() {
     super.initState();
-    _loadFriends();
     _loadSentRequests();
   }
 
-  // ✅ Load current friends from Firestore
-  Future<void> _loadFriends() async {
-    final doc = await FirebaseFirestore.instance
-        .collection('friends')
-        .doc(widget.currentUserId)
-        .get();
-
-    if (doc.exists) {
-      setState(() {
-        _friends.addAll((doc.data() ?? {}).keys);
-      });
-    }
-  }
-
-  // ✅ Load sent friend requests
   Future<void> _loadSentRequests() async {
     final snapshot = await FirebaseFirestore.instance
         .collection('friend_requests')
@@ -50,66 +33,6 @@ class _FriendsRequestsAndPeopleTabState
     });
   }
 
-  // ✅ Confirm a friend request and create chat automatically
-  Future<void> _confirmFriend(String fromUserId, String reqId) async {
-    final friendsRef = FirebaseFirestore.instance.collection('friends');
-    final requestsRef =
-        FirebaseFirestore.instance.collection('friend_requests');
-    final database = FirebaseDatabase.instance.ref(); // Realtime DB reference
-
-    // 1️⃣ Add each other as friends in Firestore
-    await friendsRef
-        .doc(widget.currentUserId)
-        .set({fromUserId: true}, SetOptions(merge: true));
-    await friendsRef
-        .doc(fromUserId)
-        .set({widget.currentUserId: true}, SetOptions(merge: true));
-
-    // 2️⃣ Delete the request
-    await requestsRef.doc(reqId).delete();
-
-    // 3️⃣ Create a chat entry in Realtime Database
-    final chatId = widget.currentUserId.hashCode <= fromUserId.hashCode
-        ? '${widget.currentUserId}-$fromUserId'
-        : '$fromUserId-${widget.currentUserId}';
-    final chatRef = database.child('chats').child(chatId);
-
-    final snapshot = await chatRef.get();
-    if (!snapshot.exists) {
-      await chatRef.set({
-        'participants': {
-          widget.currentUserId: true,
-          fromUserId: true,
-        },
-        'timestamp': ServerValue.timestamp,
-        'lastMessage': 'You are now friends! 👋',
-        'lastMessageSenderId': widget.currentUserId,
-      });
-
-      // Optionally, create a first message node
-      await chatRef.child('messages').push().set({
-        'senderId': widget.currentUserId,
-        'text': 'You are now friends! 👋',
-        'timestamp': ServerValue.timestamp,
-      });
-    }
-
-    // 4️⃣ Update local UI immediately
-    setState(() {
-      _friends.add(fromUserId);
-      _sentRequests.remove(fromUserId);
-    });
-  }
-
-  // ✅ Delete a friend request
-  Future<void> _deleteRequest(String reqId) async {
-    await FirebaseFirestore.instance
-        .collection('friend_requests')
-        .doc(reqId)
-        .delete();
-  }
-
-  // ✅ Send a new friend request
   Future<void> _sendFriendRequest(String toUserId) async {
     final requestsRef =
         FirebaseFirestore.instance.collection('friend_requests');
@@ -127,15 +50,58 @@ class _FriendsRequestsAndPeopleTabState
       'timestamp': FieldValue.serverTimestamp(),
     });
 
-    setState(() {
-      _sentRequests.add(toUserId);
-    });
+    setState(() => _sentRequests.add(toUserId));
   }
 
-  // ✅ Reusable user tile
+  Future<void> _deleteRequest(String reqId) async {
+    await FirebaseFirestore.instance
+        .collection('friend_requests')
+        .doc(reqId)
+        .delete();
+  }
+
+  Future<void> _confirmFriend(String fromUserId, String reqId) async {
+    final friendsRef = FirebaseFirestore.instance.collection('friends');
+    final requestsRef =
+        FirebaseFirestore.instance.collection('friend_requests');
+    final db = FirebaseDatabase.instance.ref();
+
+    // Batch write for mutual friendship
+    final batch = FirebaseFirestore.instance.batch();
+    batch.set(friendsRef.doc(widget.currentUserId), {fromUserId: true},
+        SetOptions(merge: true));
+    batch.set(friendsRef.doc(fromUserId), {widget.currentUserId: true},
+        SetOptions(merge: true));
+    batch.delete(requestsRef.doc(reqId));
+    await batch.commit();
+
+    // Realtime chat creation
+    final chatId = widget.currentUserId.hashCode <= fromUserId.hashCode
+        ? '${widget.currentUserId}-$fromUserId'
+        : '$fromUserId-${widget.currentUserId}';
+    final chatRef = db.child('chats').child(chatId);
+
+    final snapshot = await chatRef.get();
+    if (!snapshot.exists) {
+      await chatRef.set({
+        'participants': {widget.currentUserId: true, fromUserId: true},
+        'timestamp': ServerValue.timestamp,
+        'lastMessage': 'You are now friends! 👋',
+        'lastMessageSenderId': widget.currentUserId,
+      });
+      await chatRef.child('messages').push().set({
+        'senderId': widget.currentUserId,
+        'text': 'You are now friends! 👋',
+        'timestamp': ServerValue.timestamp,
+      });
+    }
+  }
+
   Widget _buildUserTile(Map<String, dynamic> user,
       {required VoidCallback onAction, required String actionText}) {
     final profilePic = user['profilePic'] ?? '';
+    final name = "${user['firstName'] ?? 'Unknown'} ${user['lastName'] ?? ''}";
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: ListTile(
@@ -144,164 +110,163 @@ class _FriendsRequestsAndPeopleTabState
               profilePic.isNotEmpty ? NetworkImage(profilePic) : null,
           child: profilePic.isEmpty ? const Icon(Icons.person) : null,
         ),
-        title: Text("${user['firstName']} ${user['lastName']}"),
-        trailing: ElevatedButton(
-          onPressed: onAction,
-          child: Text(actionText),
-        ),
+        title: Text(name),
+        trailing: ElevatedButton(onPressed: onAction, child: Text(actionText)),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: () async {
-        await _loadFriends();
-        await _loadSentRequests();
-      },
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 🔹 Friend Requests Section
-            const Padding(
-              padding: EdgeInsets.all(12.0),
-              child: Text(
-                "Friend Requests",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ),
-            StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('friend_requests')
-                  .where('to', isEqualTo: widget.currentUserId)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('friends')
+          .doc(widget.currentUserId)
+          .snapshots(),
+      builder: (context, friendsSnap) {
+        final friendsData =
+            friendsSnap.data?.data() as Map<String, dynamic>? ?? {};
+        final friends = friendsData.keys.toSet();
 
-                // Filter out requests that are already friends
-                final requests = snapshot.data!.docs
-                    .where((r) => !_friends.contains(r['from']))
-                    .toList();
+        return RefreshIndicator(
+          onRefresh: _loadSentRequests,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.all(12.0),
+                  child: Text("Friend Requests",
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                ),
+                StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('friend_requests')
+                      .where('to', isEqualTo: widget.currentUserId)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData)
+                      return const CircularProgressIndicator();
 
-                if (requests.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: Text("No friend requests"),
-                  );
-                }
+                    final requests = snapshot.data!.docs
+                        .where((r) => !friends.contains(r['from']))
+                        .toList();
 
-                return ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: requests.length,
-                  itemBuilder: (context, index) {
-                    final req = requests[index];
-                    final fromUserId = req['from'];
+                    if (requests.isEmpty)
+                      return const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: Text("No friend requests"),
+                      );
 
-                    return FutureBuilder<DocumentSnapshot>(
-                      future: FirebaseFirestore.instance
-                          .collection('users')
-                          .doc(fromUserId)
-                          .get(),
-                      builder: (context, userSnapshot) {
-                        if (!userSnapshot.hasData) {
-                          return const ListTile(title: Text("Loading..."));
-                        }
+                    return ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: requests.length,
+                      itemBuilder: (context, index) {
+                        final req = requests[index];
+                        final fromUserId = req['from'];
 
-                        final user =
-                            userSnapshot.data!.data() as Map<String, dynamic>;
+                        return FutureBuilder<DocumentSnapshot>(
+                          future: FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(fromUserId)
+                              .get(),
+                          builder: (context, userSnap) {
+                            if (!userSnap.hasData)
+                              return const ListTile(title: Text("Loading..."));
+                            final user =
+                                userSnap.data!.data() as Map<String, dynamic>;
 
-                        return Card(
-                          margin: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundImage:
-                                  user['profilePic']?.isNotEmpty == true
-                                      ? NetworkImage(user['profilePic'])
+                            return Card(
+                              margin: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  backgroundImage:
+                                      (user['profilePic']?.isNotEmpty ?? false)
+                                          ? NetworkImage(user['profilePic'])
+                                          : null,
+                                  child: (user['profilePic']?.isEmpty ?? true)
+                                      ? const Icon(Icons.person)
                                       : null,
-                              child: user['profilePic']?.isEmpty == true
-                                  ? const Icon(Icons.person)
-                                  : null,
-                            ),
-                            title: Text(
-                                "${user['firstName']} ${user['lastName']}"),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                TextButton(
-                                  onPressed: () =>
-                                      _confirmFriend(fromUserId, req.id),
-                                  child: const Text("Confirm"),
                                 ),
-                                TextButton(
-                                  onPressed: () => _deleteRequest(req.id),
-                                  child: const Text("Delete"),
+                                title: Text(
+                                    "${user['firstName']} ${user['lastName']}"),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          _confirmFriend(fromUserId, req.id),
+                                      child: const Text("Confirm"),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => _deleteRequest(req.id),
+                                      child: const Text("Delete"),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                          ),
+                              ),
+                            );
+                          },
                         );
                       },
                     );
                   },
-                );
-              },
-            ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.all(12.0),
+                  child: Text("People You May Know",
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                ),
+                StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('users')
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData)
+                      return const CircularProgressIndicator();
 
-            // 🔹 People You May Know Section
-            const Padding(
-              padding: EdgeInsets.all(12.0),
-              child: Text(
-                "People You May Know",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ),
-            StreamBuilder<QuerySnapshot>(
-              stream:
-                  FirebaseFirestore.instance.collection('users').snapshots(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+                    final users = snapshot.data!.docs
+                        .where((doc) => doc.id != widget.currentUserId)
+                        .map((doc) => {
+                              'id': doc.id,
+                              ...doc.data() as Map<String, dynamic>
+                            })
+                        .where((u) =>
+                            !friends.contains(u['id']) &&
+                            !_sentRequests.contains(u['id']))
+                        .toList();
 
-                final users = snapshot.data!.docs
-                    .where((doc) => doc.id != widget.currentUserId)
-                    .map((doc) =>
-                        {'id': doc.id, ...doc.data() as Map<String, dynamic>})
-                    .where((data) =>
-                        !_friends.contains(data['id']) &&
-                        !_sentRequests.contains(data['id']))
-                    .toList();
+                    if (users.isEmpty)
+                      return const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: Text("No suggestions available"),
+                      );
 
-                if (users.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: Text("No suggestions available"),
-                  );
-                }
-
-                return ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: users.length,
-                  itemBuilder: (context, index) {
-                    final user = users[index];
-                    return _buildUserTile(user,
-                        onAction: () => _sendFriendRequest(user['id']),
-                        actionText: "Add Friend");
+                    return ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: users.length,
+                      itemBuilder: (context, index) {
+                        final user = users[index];
+                        return _buildUserTile(
+                          user,
+                          onAction: () => _sendFriendRequest(user['id']),
+                          actionText: "Add Friend",
+                        );
+                      },
+                    );
                   },
-                );
-              },
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
