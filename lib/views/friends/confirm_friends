@@ -12,75 +12,93 @@ class ConfirmFriendRequest extends StatelessWidget {
     required this.requesterId,
   }) : super(key: key);
 
+  /// ✅ Accept the friend request
   Future<void> acceptRequest() async {
     final firestore = FirebaseFirestore.instance;
     final db = FirebaseDatabase.instance.ref();
 
-    // Create mutual friendship
-    await firestore
-        .collection('friends')
-        .doc(currentUserId)
-        .collection('list')
-        .doc(requesterId)
-        .set({
-      'mutual': true,
-      'timestamp': FieldValue.serverTimestamp(),
-    });
+    try {
+      // Batch write for both users to ensure atomicity
+      final batch = firestore.batch();
 
-    await firestore
-        .collection('friends')
-        .doc(requesterId)
-        .collection('list')
-        .doc(currentUserId)
-        .set({
-      'mutual': true,
-      'timestamp': FieldValue.serverTimestamp(),
-    });
+      final currentRef = firestore
+          .collection('friends')
+          .doc(currentUserId)
+          .collection('list')
+          .doc(requesterId);
 
-    // Remove request
-    final query = await firestore
-        .collection('friend_requests')
-        .where('from', isEqualTo: requesterId)
-        .where('to', isEqualTo: currentUserId)
-        .get();
+      final requesterRef = firestore
+          .collection('friends')
+          .doc(requesterId)
+          .collection('list')
+          .doc(currentUserId);
 
-    for (var doc in query.docs) {
-      await doc.reference.delete();
-    }
-
-    // Optional: create chat in Realtime DB
-    final chatId = currentUserId.hashCode <= requesterId.hashCode
-        ? '$currentUserId-$requesterId'
-        : '$requesterId-$currentUserId';
-
-    final chatRef = db.child('chats').child(chatId);
-    final chatSnapshot = await chatRef.get();
-    if (!chatSnapshot.exists) {
-      await chatRef.set({
-        'participants': {currentUserId: true, requesterId: true},
-        'timestamp': ServerValue.timestamp,
-        'lastMessage': 'You are now friends! 👋',
-        'lastMessageSenderId': currentUserId,
+      batch.set(currentRef, {
+        'mutual': true,
+        'timestamp': FieldValue.serverTimestamp(),
       });
 
-      await chatRef.child('messages').push().set({
-        'senderId': currentUserId,
-        'text': 'You are now friends! 👋',
-        'timestamp': ServerValue.timestamp,
+      batch.set(requesterRef, {
+        'mutual': true,
+        'timestamp': FieldValue.serverTimestamp(),
       });
+
+      // Delete the friend request
+      final query = await firestore
+          .collection('friend_requests')
+          .where('from', isEqualTo: requesterId)
+          .where('to', isEqualTo: currentUserId)
+          .get();
+
+      for (var doc in query.docs) {
+        batch.delete(doc.reference);
+      }
+
+      await batch.commit();
+
+      // Create chat in Realtime Database if it doesn't exist
+      final chatId = currentUserId.hashCode <= requesterId.hashCode
+          ? '$currentUserId-$requesterId'
+          : '$requesterId-$currentUserId';
+
+      final chatRef = db.child('chats').child(chatId);
+      final chatSnapshot = await chatRef.get();
+
+      if (!chatSnapshot.exists) {
+        await chatRef.set({
+          'participants': {currentUserId: true, requesterId: true},
+          'timestamp': ServerValue.timestamp,
+          'lastMessage': 'You are now friends! 👋',
+          'lastMessageSenderId': currentUserId,
+        });
+
+        await chatRef.child('messages').push().set({
+          'senderId': currentUserId,
+          'text': 'You are now friends! 👋',
+          'timestamp': ServerValue.timestamp,
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ Error accepting friend request: $e');
     }
   }
 
+  /// ✅ Reject the friend request
   Future<void> rejectRequest() async {
     final firestore = FirebaseFirestore.instance;
-    final query = await firestore
-        .collection('friend_requests')
-        .where('from', isEqualTo: requesterId)
-        .where('to', isEqualTo: currentUserId)
-        .get();
 
-    for (var doc in query.docs) {
-      await doc.reference.delete();
+    try {
+      final query = await firestore
+          .collection('friend_requests')
+          .where('from', isEqualTo: requesterId)
+          .where('to', isEqualTo: currentUserId)
+          .get();
+
+      for (var doc in query.docs) {
+        await doc.reference.delete();
+      }
+    } catch (e) {
+      debugPrint('❌ Error rejecting friend request: $e');
     }
   }
 
