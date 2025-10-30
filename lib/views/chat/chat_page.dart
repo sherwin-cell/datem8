@@ -6,28 +6,48 @@ import 'package:intl/intl.dart';
 import 'chat_conversation_page.dart';
 import 'package:datem8/services/cloudinary_service.dart';
 
-class ChatPage extends StatelessWidget {
+class ChatPage extends StatefulWidget {
   final CloudinaryService cloudinaryService;
-
   const ChatPage({super.key, required this.cloudinaryService});
+
+  @override
+  State<ChatPage> createState() => _ChatPageState();
+}
+
+class _ChatPageState extends State<ChatPage> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final Set<String> _chatsEnsured = {}; // Track chats that already exist
 
   String _getChatId(String uid1, String uid2) =>
       uid1.hashCode <= uid2.hashCode ? '$uid1-$uid2' : '$uid2-$uid1';
 
-  Future<void> _openChat(BuildContext context, String currentUserId,
-      String otherUserId, String otherUserName) async {
-    final chatId = _getChatId(currentUserId, otherUserId);
-    final chatRef = FirebaseDatabase.instance.ref('chats/$chatId');
+  /// Ensures a chat exists for the friend pair (creates if not)
+  Future<void> _ensureChatExists(String currentUserId, String friendId) async {
+    final chatId = _getChatId(currentUserId, friendId);
 
+    if (_chatsEnsured.contains(chatId)) return; // Already ensured
+
+    final chatRef = FirebaseDatabase.instance.ref('chats/$chatId');
     final snapshot = await chatRef.get();
+
     if (!snapshot.exists) {
       await chatRef.set({
-        'participants': {currentUserId: true, otherUserId: true},
+        'participants': {currentUserId: true, friendId: true},
         'timestamp': ServerValue.timestamp,
         'lastMessage': "",
         'lastMessageSenderId': "",
       });
     }
+
+    _chatsEnsured.add(chatId);
+  }
+
+  /// Opens chat page and ensures chat exists
+  Future<void> _openChat(String friendId, String friendName) async {
+    final currentUserId = _auth.currentUser!.uid;
+    await _ensureChatExists(currentUserId, friendId);
+
+    final chatId = _getChatId(currentUserId, friendId);
 
     if (!context.mounted) return;
     Navigator.push(
@@ -36,9 +56,9 @@ class ChatPage extends StatelessWidget {
         builder: (_) => ChatConversationPage(
           chatId: chatId,
           currentUserId: currentUserId,
-          otherUserId: otherUserId,
-          otherUserName: otherUserName,
-          cloudinaryService: cloudinaryService,
+          otherUserId: friendId,
+          otherUserName: friendName,
+          cloudinaryService: widget.cloudinaryService,
         ),
       ),
     );
@@ -83,7 +103,7 @@ class ChatPage extends StatelessWidget {
 
         final data = snapshot.data?.snapshot.value;
         if (data is Map) {
-          isOnline = data['isOnline'] ?? false;
+          isOnline = data['isOnline'] as bool? ?? false;
           lastSeen = data['lastSeen'] as int?;
         }
 
@@ -120,10 +140,7 @@ class ChatPage extends StatelessWidget {
                 child: Text(
                   _formatLastSeen(lastSeen),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey,
-                  ),
+                  style: const TextStyle(fontSize: 10, color: Colors.grey),
                 ),
               ),
           ],
@@ -134,10 +151,12 @@ class ChatPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = FirebaseAuth.instance.currentUser!;
+    final currentUser = _auth.currentUser!;
     final usersCollection = FirebaseFirestore.instance.collection('users');
-    final friendsDoc =
-        FirebaseFirestore.instance.collection('friends').doc(currentUser.uid);
+    final friendsSubCollection = FirebaseFirestore.instance
+        .collection('friends')
+        .doc(currentUser.uid)
+        .collection('list');
 
     return Scaffold(
       appBar: AppBar(title: const Text("Messages")),
@@ -146,37 +165,36 @@ class ChatPage extends StatelessWidget {
           // Horizontal friends list
           SizedBox(
             height: 100,
-            child: StreamBuilder<DocumentSnapshot>(
-              stream: friendsDoc.snapshots(),
+            child: StreamBuilder<QuerySnapshot>(
+              stream: friendsSubCollection.snapshots(),
               builder: (context, snapshot) {
-                if (!snapshot.hasData) {
+                if (!snapshot.hasData)
                   return const Center(child: CircularProgressIndicator());
-                }
 
-                final friendsData =
-                    snapshot.data?.data() as Map<String, dynamic>? ?? {};
-                if (friendsData.isEmpty) {
+                final friendsList =
+                    snapshot.data!.docs.map((doc) => doc.id).toList();
+
+                if (friendsList.isEmpty)
                   return const Center(child: Text("No friends yet"));
-                }
-
-                final friendIds = friendsData.keys.toList();
 
                 return ListView.builder(
                   scrollDirection: Axis.horizontal,
-                  itemCount: friendIds.length,
+                  itemCount: friendsList.length,
                   itemBuilder: (context, index) {
-                    final friendId = friendIds[index];
-                    return FutureBuilder<DocumentSnapshot>(
-                      future: usersCollection.doc(friendId).get(),
+                    final friendId = friendsList[index];
+
+                    return StreamBuilder<DocumentSnapshot>(
+                      stream: usersCollection.doc(friendId).snapshots(),
                       builder: (context, userSnapshot) {
-                        if (!userSnapshot.hasData) {
+                        if (!userSnapshot.hasData)
                           return const Padding(
                             padding: EdgeInsets.symmetric(horizontal: 8),
-                            child: Center(child: CircularProgressIndicator()),
+                            child: Center(
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2)),
                           );
-                        }
 
-                        final userData = userSnapshot.data?.data()
+                        final userData = userSnapshot.data!.data()
                                 as Map<String, dynamic>? ??
                             {};
                         final name =
@@ -184,8 +202,7 @@ class ChatPage extends StatelessWidget {
                         final profilePic = userData['profilePic'] ?? '';
 
                         return GestureDetector(
-                          onTap: () => _openChat(
-                              context, currentUser.uid, friendId, name),
+                          onTap: () => _openChat(friendId, name),
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 8),
                             child: Column(
@@ -213,28 +230,25 @@ class ChatPage extends StatelessWidget {
               },
             ),
           ),
-
           const Divider(height: 1),
-
-          // Main chat list
+          // Chat list
           Expanded(
-            child: StreamBuilder<DocumentSnapshot>(
-              stream: friendsDoc.snapshots(),
-              builder: (context, friendsSnapshot) {
-                if (!friendsSnapshot.hasData) {
+            child: StreamBuilder<QuerySnapshot>(
+              stream: friendsSubCollection.snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData)
                   return const Center(child: CircularProgressIndicator());
-                }
 
-                final friendsData =
-                    friendsSnapshot.data?.data() as Map<String, dynamic>? ?? {};
-                if (friendsData.isEmpty) {
+                final friendsList =
+                    snapshot.data!.docs.map((doc) => doc.id).toList();
+
+                if (friendsList.isEmpty)
                   return const Center(child: Text("No friends to chat with"));
-                }
-
-                final friendIds = friendsData.keys.toList();
 
                 return FutureBuilder<List<Map<String, dynamic>>>(
-                  future: Future.wait(friendIds.map((friendId) async {
+                  future: Future.wait(friendsList.map((friendId) async {
+                    await _ensureChatExists(currentUser.uid, friendId);
+
                     final chatId = _getChatId(currentUser.uid, friendId);
                     final chatSnap = await FirebaseDatabase.instance
                         .ref('chats/$chatId')
@@ -250,21 +264,12 @@ class ChatPage extends StatelessWidget {
                     };
                   }).toList()),
                   builder: (context, chatListSnapshot) {
-                    if (!chatListSnapshot.hasData) {
+                    if (!chatListSnapshot.hasData)
                       return const Center(child: CircularProgressIndicator());
-                    }
 
                     final chats = chatListSnapshot.data!;
-
-                    // Sort: current user sent last first, then newest timestamp
-                    chats.sort((a, b) {
-                      final aIsMe = a['lastSender'] == currentUser.uid;
-                      final bIsMe = b['lastSender'] == currentUser.uid;
-                      if (aIsMe && !bIsMe) return -1;
-                      if (!aIsMe && bIsMe) return 1;
-                      return (b['timestamp'] ?? 0)
-                          .compareTo(a['timestamp'] ?? 0);
-                    });
+                    chats.sort((a, b) =>
+                        (b['timestamp'] ?? 0).compareTo(a['timestamp'] ?? 0));
 
                     return ListView.builder(
                       itemCount: chats.length,
@@ -274,17 +279,16 @@ class ChatPage extends StatelessWidget {
                         final lastMessage = chat['lastMessage'];
                         final time = _formatTime(chat['timestamp']);
 
-                        return FutureBuilder<DocumentSnapshot>(
-                          future: usersCollection.doc(friendId).get(),
+                        return StreamBuilder<DocumentSnapshot>(
+                          stream: usersCollection.doc(friendId).snapshots(),
                           builder: (context, userSnapshot) {
-                            if (!userSnapshot.hasData) {
+                            if (!userSnapshot.hasData)
                               return const ListTile(
                                 title: Text("Loading..."),
                                 leading: CircleAvatar(),
                               );
-                            }
 
-                            final userData = userSnapshot.data?.data()
+                            final userData = userSnapshot.data!.data()
                                     as Map<String, dynamic>? ??
                                 {};
                             final name =
@@ -295,17 +299,20 @@ class ChatPage extends StatelessWidget {
                               leading: _buildUserAvatar(profilePic, friendId),
                               title: Text(name),
                               subtitle: lastMessage.isNotEmpty
-                                  ? Text(lastMessage,
+                                  ? Text(
+                                      lastMessage,
                                       maxLines: 1,
-                                      overflow: TextOverflow.ellipsis)
+                                      overflow: TextOverflow.ellipsis,
+                                    )
                                   : const Text("Say hi 👋"),
                               trailing: time.isNotEmpty
-                                  ? Text(time,
+                                  ? Text(
+                                      time,
                                       style: const TextStyle(
-                                          fontSize: 12, color: Colors.grey))
+                                          fontSize: 12, color: Colors.grey),
+                                    )
                                   : null,
-                              onTap: () => _openChat(
-                                  context, currentUser.uid, friendId, name),
+                              onTap: () => _openChat(friendId, name),
                             );
                           },
                         );

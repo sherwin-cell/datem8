@@ -60,12 +60,10 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
 
   Future<void> _sendMessage({List<String>? imageUrls}) async {
     if (_isBlocked) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-              "Messaging is disabled because one of you blocked the other."),
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content:
+            Text("Messaging is disabled because one of you blocked the other."),
+      ));
       return;
     }
 
@@ -75,12 +73,10 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     try {
       final chatRef = _dbRef.child('chats/${widget.chatId}');
       await chatRef.update({
-        'participants': {
-          widget.currentUserId: true,
-          widget.otherUserId: true,
-        },
+        'participants': {widget.currentUserId: true, widget.otherUserId: true},
         'timestamp': ServerValue.timestamp,
         'lastMessage': text.isNotEmpty ? text : "[Image]",
+        'lastMessageSenderId': widget.currentUserId,
       });
 
       final msgRef = chatRef.child('messages').push();
@@ -136,20 +132,16 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
         map['key'] = e.key;
         return map;
       }).toList();
-
       msgs.sort((a, b) => (a['timestamp'] ?? 0).compareTo(b['timestamp'] ?? 0));
       return msgs;
     });
   }
 
-  /// ✅ Pick and upload multiple images
   Future<void> _pickImages() async {
     try {
       final imageUrls =
           await widget.cloudinaryService.pickAndUploadMultipleImages();
-      if (imageUrls.isNotEmpty) {
-        await _sendMessage(imageUrls: imageUrls);
-      }
+      if (imageUrls.isNotEmpty) await _sendMessage(imageUrls: imageUrls);
     } catch (e) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text("Failed to send images: $e")));
@@ -182,43 +174,32 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
         .format(DateTime.fromMillisecondsSinceEpoch(timestamp));
   }
 
-  /// ✅ Build message bubble (now supports multiple images)
   Widget _buildMessage(Map<String, dynamic> msg) {
     final isMe = msg['senderId'] == widget.currentUserId;
     final msgKey = msg['key'];
     final isTapped = _tappedMessages.contains(msgKey);
     final reactionEmoji = msg['reaction']?['emoji'] ?? _reactions[msgKey];
-
-    final List<dynamic> imageUrls = (msg['imageUrls'] ??
-            (msg['imageUrl'] != null && msg['imageUrl'] != ""
-                ? [msg['imageUrl']]
-                : []))
-        .cast<String>();
-
+    final List<dynamic> imageUrls =
+        (msg['imageUrls'] ?? (msg['imageUrl'] != null ? [msg['imageUrl']] : []))
+            .cast<String>();
     final hasImages = imageUrls.isNotEmpty;
     final hasText = (msg['text'] ?? "").isNotEmpty;
 
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          isTapped
-              ? _tappedMessages.remove(msgKey)
-              : _tappedMessages.add(msgKey);
-        });
-      },
+      onTap: () => setState(() => isTapped
+          ? _tappedMessages.remove(msgKey)
+          : _tappedMessages.add(msgKey)),
       onLongPress: () async {
         final action = await showModalBottomSheet<String>(
           context: context,
           builder: (_) =>
               _MessageActionSheet(isMe: isMe, emojis: _reactionEmojis),
         );
-
         if (action != null) {
-          if (action == 'delete') {
+          if (action == 'delete')
             _unsendMessage(msgKey);
-          } else if (_reactionEmojis.contains(action)) {
+          else if (_reactionEmojis.contains(action))
             _reactToMessage(msgKey, action);
-          }
         }
       },
       child: Align(
@@ -229,7 +210,6 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
             crossAxisAlignment:
                 isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
             children: [
-              // ✅ Multiple images displayed in grid
               if (hasImages)
                 GridView.builder(
                   shrinkWrap: true,
@@ -250,8 +230,6 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                     ),
                   ),
                 ),
-
-              // ✅ Text message bubble
               if (hasText)
                 Container(
                   margin: EdgeInsets.only(top: hasImages ? 6 : 0),
@@ -261,32 +239,24 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                     color: isMe ? Colors.blue[300] : Colors.grey[300],
                     borderRadius: BorderRadius.circular(30),
                   ),
-                  child: Text(
-                    msg['text'],
-                    style: TextStyle(
-                      color: isMe ? Colors.white : Colors.black87,
-                      fontSize: 15,
-                    ),
-                  ),
+                  child: Text(msg['text'],
+                      style: TextStyle(
+                          color: isMe ? Colors.white : Colors.black87,
+                          fontSize: 15)),
                 ),
-
               if (reactionEmoji != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child:
                       Text(reactionEmoji, style: const TextStyle(fontSize: 18)),
                 ),
-
               if (isTapped)
                 Padding(
                   padding: const EdgeInsets.only(top: 2),
-                  child: Text(
-                    _formatTime(msg['timestamp']),
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: isMe ? Colors.white70 : Colors.black54,
-                    ),
-                  ),
+                  child: Text(_formatTime(msg['timestamp']),
+                      style: TextStyle(
+                          fontSize: 10,
+                          color: isMe ? Colors.white70 : Colors.black54)),
                 ),
             ],
           ),
@@ -315,36 +285,29 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.photo_library),
-            color: Colors.grey[700],
-            onPressed: _pickImages, // ✅ multi image picker
-          ),
+              icon: const Icon(Icons.photo_library),
+              color: Colors.grey[700],
+              onPressed: _pickImages),
           IconButton(
-            icon: const Icon(Icons.camera_alt),
-            color: Colors.grey[700],
-            onPressed: _takePhoto,
-          ),
+              icon: const Icon(Icons.camera_alt),
+              color: Colors.grey[700],
+              onPressed: _takePhoto),
           Expanded(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(30),
-              ),
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(30)),
               child: TextField(
-                controller: _messageController,
-                decoration: const InputDecoration(
-                  hintText: "Type a message...",
-                  border: InputBorder.none,
-                ),
-              ),
+                  controller: _messageController,
+                  decoration: const InputDecoration(
+                      hintText: "Type a message...", border: InputBorder.none)),
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.send),
-            color: Colors.blue,
-            onPressed: () => _sendMessage(),
-          ),
+              icon: const Icon(Icons.send),
+              color: Colors.blue,
+              onPressed: () => _sendMessage()),
         ],
       ),
     );
@@ -361,16 +324,13 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
               switch (value) {
                 case 'view_profile':
                   Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => OtherUserProfilePage(
-                        userId: widget.otherUserId,
-                        userName: widget.otherUserName,
-                        cloudinaryService: widget.cloudinaryService,
-                        avatarUrl: "",
-                      ),
-                    ),
-                  );
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => OtherUserProfilePage(
+                              userId: widget.otherUserId,
+                              userName: widget.otherUserName,
+                              cloudinaryService: widget.cloudinaryService,
+                              avatarUrl: "")));
                   break;
                 case 'block':
                   await _blockedService.blockUser(
@@ -406,18 +366,16 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
             child: StreamBuilder<List<Map<String, dynamic>>>(
               stream: _messagesStream(),
               builder: (context, snapshot) {
-                if (!snapshot.hasData) {
+                if (!snapshot.hasData)
                   return const Center(child: CircularProgressIndicator());
-                }
                 final messages = snapshot.data!;
                 WidgetsBinding.instance
                     .addPostFrameCallback((_) => _scrollToBottom());
                 return ListView.builder(
-                  controller: _scrollController,
-                  itemCount: messages.length,
-                  itemBuilder: (context, index) =>
-                      _buildMessage(messages[index]),
-                );
+                    controller: _scrollController,
+                    itemCount: messages.length,
+                    itemBuilder: (context, index) =>
+                        _buildMessage(messages[index]));
               },
             ),
           ),
