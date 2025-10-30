@@ -1,0 +1,105 @@
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_database/firebase_database.dart';
+
+class ConfirmFriendRequest extends StatelessWidget {
+  final String currentUserId;
+  final String requesterId;
+
+  const ConfirmFriendRequest({
+    Key? key,
+    required this.currentUserId,
+    required this.requesterId,
+  }) : super(key: key);
+
+  Future<void> acceptRequest() async {
+    final firestore = FirebaseFirestore.instance;
+    final db = FirebaseDatabase.instance.ref();
+
+    // Create mutual friendship
+    await firestore
+        .collection('friends')
+        .doc(currentUserId)
+        .collection('list')
+        .doc(requesterId)
+        .set({
+      'mutual': true,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+
+    await firestore
+        .collection('friends')
+        .doc(requesterId)
+        .collection('list')
+        .doc(currentUserId)
+        .set({
+      'mutual': true,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+
+    // Remove request
+    final query = await firestore
+        .collection('friend_requests')
+        .where('from', isEqualTo: requesterId)
+        .where('to', isEqualTo: currentUserId)
+        .get();
+
+    for (var doc in query.docs) {
+      await doc.reference.delete();
+    }
+
+    // Optional: create chat in Realtime DB
+    final chatId = currentUserId.hashCode <= requesterId.hashCode
+        ? '$currentUserId-$requesterId'
+        : '$requesterId-$currentUserId';
+
+    final chatRef = db.child('chats').child(chatId);
+    final chatSnapshot = await chatRef.get();
+    if (!chatSnapshot.exists) {
+      await chatRef.set({
+        'participants': {currentUserId: true, requesterId: true},
+        'timestamp': ServerValue.timestamp,
+        'lastMessage': 'You are now friends! 👋',
+        'lastMessageSenderId': currentUserId,
+      });
+
+      await chatRef.child('messages').push().set({
+        'senderId': currentUserId,
+        'text': 'You are now friends! 👋',
+        'timestamp': ServerValue.timestamp,
+      });
+    }
+  }
+
+  Future<void> rejectRequest() async {
+    final firestore = FirebaseFirestore.instance;
+    final query = await firestore
+        .collection('friend_requests')
+        .where('from', isEqualTo: requesterId)
+        .where('to', isEqualTo: currentUserId)
+        .get();
+
+    for (var doc in query.docs) {
+      await doc.reference.delete();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        ElevatedButton(
+          onPressed: acceptRequest,
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+          child: const Text('Accept'),
+        ),
+        const SizedBox(width: 8),
+        ElevatedButton(
+          onPressed: rejectRequest,
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+          child: const Text('Reject'),
+        ),
+      ],
+    );
+  }
+}
