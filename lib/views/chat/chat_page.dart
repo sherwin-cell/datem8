@@ -15,41 +15,34 @@ class ChatPage extends StatefulWidget {
 }
 
 class _ChatPageState extends State<ChatPage> {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final Set<String> _chatsEnsured = {}; // Track chats that already exist
+  final _auth = FirebaseAuth.instance;
+  final _db = FirebaseDatabase.instance.ref();
+  final _firestore = FirebaseFirestore.instance;
 
   String _getChatId(String uid1, String uid2) =>
       uid1.hashCode <= uid2.hashCode ? '$uid1-$uid2' : '$uid2-$uid1';
 
-  /// Ensures a chat exists for the friend pair (creates if not)
   Future<void> _ensureChatExists(String currentUserId, String friendId) async {
     final chatId = _getChatId(currentUserId, friendId);
-
-    if (_chatsEnsured.contains(chatId)) return; // Already ensured
-
-    final chatRef = FirebaseDatabase.instance.ref('chats/$chatId');
+    final chatRef = _db.child('chats/$chatId');
     final snapshot = await chatRef.get();
 
     if (!snapshot.exists) {
       await chatRef.set({
         'participants': {currentUserId: true, friendId: true},
         'timestamp': ServerValue.timestamp,
-        'lastMessage': "",
-        'lastMessageSenderId': "",
+        'lastMessage': '',
+        'lastMessageSenderId': '',
       });
     }
-
-    _chatsEnsured.add(chatId);
   }
 
-  /// Opens chat page and ensures chat exists
   Future<void> _openChat(String friendId, String friendName) async {
     final currentUserId = _auth.currentUser!.uid;
     await _ensureChatExists(currentUserId, friendId);
-
     final chatId = _getChatId(currentUserId, friendId);
 
-    if (!context.mounted) return;
+    if (!mounted) return;
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -65,48 +58,26 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   String _formatTime(int? timestamp) {
-    if (timestamp == null) return "";
+    if (timestamp == null || timestamp == 0) return '';
     final date = DateTime.fromMillisecondsSinceEpoch(timestamp);
     final now = DateTime.now();
     final diff = now.difference(date);
 
-    if (diff.inDays == 0 &&
-        now.day == date.day &&
-        now.month == date.month &&
-        now.year == date.year) {
+    if (diff.inDays == 0) {
       return DateFormat('hh:mm a').format(date);
-    } else if (diff.inDays == 1 || (diff.inDays < 2 && now.day != date.day)) {
+    } else if (diff.inDays == 1) {
       return 'Yesterday ${DateFormat('hh:mm a').format(date)}';
     } else {
       return DateFormat('MMM d').format(date);
     }
   }
 
-  String _formatLastSeen(int? timestamp) {
-    if (timestamp == null) return "";
-    final date = DateTime.fromMillisecondsSinceEpoch(timestamp);
-    final diff = DateTime.now().difference(date);
-
-    if (diff.inMinutes < 1) return "Just now";
-    if (diff.inMinutes < 60) return "${diff.inMinutes} min ago";
-    if (diff.inHours < 24) return "${diff.inHours} h ago";
-    return "${diff.inDays} d ago";
-  }
-
   Widget _buildUserAvatar(String profilePic, String userId,
-      {double radius = 28}) {
+      {double radius = 26}) {
     return StreamBuilder<DatabaseEvent>(
-      stream: FirebaseDatabase.instance.ref('status/$userId').onValue,
+      stream: _db.child('status/$userId/isOnline').onValue,
       builder: (context, snapshot) {
-        bool isOnline = false;
-        int? lastSeen;
-
-        final data = snapshot.data?.snapshot.value;
-        if (data is Map) {
-          isOnline = data['isOnline'] as bool? ?? false;
-          lastSeen = data['lastSeen'] as int?;
-        }
-
+        final isOnline = snapshot.data?.snapshot.value == true;
         return Stack(
           clipBehavior: Clip.none,
           children: [
@@ -115,32 +86,21 @@ class _ChatPageState extends State<ChatPage> {
               backgroundImage:
                   profilePic.isNotEmpty ? NetworkImage(profilePic) : null,
               child: profilePic.isEmpty
-                  ? const Icon(Icons.person, size: 30)
+                  ? const Icon(Icons.person, size: 28)
                   : null,
             ),
             if (isOnline)
               Positioned(
-                bottom: 0,
-                right: 0,
+                bottom: 2,
+                right: 2,
                 child: Container(
-                  width: 14,
-                  height: 14,
+                  width: 12,
+                  height: 12,
                   decoration: BoxDecoration(
                     color: Colors.green,
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 2),
                   ),
-                ),
-              ),
-            if (!isOnline && lastSeen != null)
-              Positioned(
-                bottom: -18,
-                left: 0,
-                right: 0,
-                child: Text(
-                  _formatLastSeen(lastSeen),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 10, color: Colors.grey),
                 ),
               ),
           ],
@@ -152,65 +112,61 @@ class _ChatPageState extends State<ChatPage> {
   @override
   Widget build(BuildContext context) {
     final currentUser = _auth.currentUser!;
-    final usersCollection = FirebaseFirestore.instance.collection('users');
-    final friendsSubCollection = FirebaseFirestore.instance
+    final friendsRef = _firestore
         .collection('friends')
         .doc(currentUser.uid)
         .collection('list');
+    final usersRef = _firestore.collection('users');
 
     return Scaffold(
       appBar: AppBar(title: const Text("Messages")),
       body: Column(
         children: [
-          // Horizontal friends list
+          // 🔹 Friend list
           SizedBox(
-            height: 100,
+            height: 130,
             child: StreamBuilder<QuerySnapshot>(
-              stream: friendsSubCollection.snapshots(),
+              stream: friendsRef.snapshots(),
               builder: (context, snapshot) {
-                if (!snapshot.hasData)
+                if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
-
-                final friendsList =
-                    snapshot.data!.docs.map((doc) => doc.id).toList();
-
-                if (friendsList.isEmpty)
+                }
+                final friendIds = snapshot.data!.docs.map((e) => e.id).toList();
+                if (friendIds.isEmpty) {
                   return const Center(child: Text("No friends yet"));
+                }
 
                 return ListView.builder(
                   scrollDirection: Axis.horizontal,
-                  itemCount: friendsList.length,
-                  itemBuilder: (context, index) {
-                    final friendId = friendsList[index];
-
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  itemCount: friendIds.length,
+                  itemBuilder: (context, i) {
+                    final friendId = friendIds[i];
                     return StreamBuilder<DocumentSnapshot>(
-                      stream: usersCollection.doc(friendId).snapshots(),
-                      builder: (context, userSnapshot) {
-                        if (!userSnapshot.hasData)
-                          return const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 8),
-                            child: Center(
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2)),
-                          );
+                      stream: usersRef.doc(friendId).snapshots(),
+                      builder: (context, userSnap) {
+                        if (!userSnap.hasData || !userSnap.data!.exists) {
+                          return const SizedBox.shrink();
+                        }
 
-                        final userData = userSnapshot.data!.data()
-                                as Map<String, dynamic>? ??
-                            {};
+                        final user =
+                            userSnap.data!.data() as Map<String, dynamic>;
                         final name =
-                            "${userData['firstName'] ?? 'Unknown'} ${userData['lastName'] ?? ''}";
-                        final profilePic = userData['profilePic'] ?? '';
+                            "${user['firstName'] ?? ''} ${user['lastName'] ?? ''}"
+                                .trim();
+                        final profilePic = user['profilePic'] ?? '';
 
                         return GestureDetector(
                           onTap: () => _openChat(friendId, name),
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
                             child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 _buildUserAvatar(profilePic, friendId),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: 6),
                                 SizedBox(
-                                  width: 60,
+                                  width: 70,
                                   child: Text(
                                     name,
                                     maxLines: 1,
@@ -231,90 +187,88 @@ class _ChatPageState extends State<ChatPage> {
             ),
           ),
           const Divider(height: 1),
-          // Chat list
+
+          // 🔹 Chat List (optimized)
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: friendsSubCollection.snapshots(),
+            child: StreamBuilder<DatabaseEvent>(
+              stream: _db
+                  .child('chats')
+                  .orderByChild('participants/${currentUser.uid}')
+                  .equalTo(true)
+                  .onValue,
               builder: (context, snapshot) {
-                if (!snapshot.hasData)
-                  return const Center(child: CircularProgressIndicator());
+                if (!snapshot.hasData ||
+                    snapshot.data!.snapshot.value == null) {
+                  return const Center(child: Text("No recent chats"));
+                }
 
-                final friendsList =
-                    snapshot.data!.docs.map((doc) => doc.id).toList();
+                final rawData = snapshot.data!.snapshot.value as Map;
+                final chats = <Map<String, dynamic>>[];
 
-                if (friendsList.isEmpty)
-                  return const Center(child: Text("No friends to chat with"));
+                rawData.forEach((chatId, chatDataRaw) {
+                  final chatData = Map<String, dynamic>.from(chatDataRaw);
+                  final deletedFor =
+                      Map<String, dynamic>.from(chatData['deletedFor'] ?? {});
+                  if (deletedFor[currentUser.uid] == true) return;
 
-                return FutureBuilder<List<Map<String, dynamic>>>(
-                  future: Future.wait(friendsList.map((friendId) async {
-                    await _ensureChatExists(currentUser.uid, friendId);
+                  chats.add({
+                    'chatId': chatId,
+                    'participants': Map<String, dynamic>.from(
+                        chatData['participants'] ?? {}),
+                    'lastMessage': chatData['lastMessage'] ?? '',
+                    'timestamp': chatData['timestamp'] ?? 0,
+                  });
+                });
 
-                    final chatId = _getChatId(currentUser.uid, friendId);
-                    final chatSnap = await FirebaseDatabase.instance
-                        .ref('chats/$chatId')
-                        .get();
-                    final chatData =
-                        chatSnap.value as Map<dynamic, dynamic>? ?? {};
-                    return {
-                      'friendId': friendId,
-                      'chatId': chatId,
-                      'lastMessage': chatData['lastMessage'] ?? '',
-                      'timestamp': chatData['timestamp'] ?? 0,
-                      'lastSender': chatData['lastMessageSenderId'] ?? '',
-                    };
-                  }).toList()),
-                  builder: (context, chatListSnapshot) {
-                    if (!chatListSnapshot.hasData)
-                      return const Center(child: CircularProgressIndicator());
+                chats.sort((a, b) =>
+                    (b['timestamp'] ?? 0).compareTo(a['timestamp'] ?? 0));
 
-                    final chats = chatListSnapshot.data!;
-                    chats.sort((a, b) =>
-                        (b['timestamp'] ?? 0).compareTo(a['timestamp'] ?? 0));
+                if (chats.isEmpty) {
+                  return const Center(child: Text("No recent chats"));
+                }
 
-                    return ListView.builder(
-                      itemCount: chats.length,
-                      itemBuilder: (context, index) {
-                        final chat = chats[index];
-                        final friendId = chat['friendId'];
-                        final lastMessage = chat['lastMessage'];
-                        final time = _formatTime(chat['timestamp']);
+                return ListView.builder(
+                  itemCount: chats.length,
+                  itemBuilder: (context, i) {
+                    final chat = chats[i];
+                    final friendId = chat['participants']
+                        .keys
+                        .firstWhere((id) => id != currentUser.uid);
+                    final lastMsg = chat['lastMessage'].toString().isEmpty
+                        ? "No messages yet"
+                        : chat['lastMessage'];
+                    final time = _formatTime(chat['timestamp']);
 
-                        return StreamBuilder<DocumentSnapshot>(
-                          stream: usersCollection.doc(friendId).snapshots(),
-                          builder: (context, userSnapshot) {
-                            if (!userSnapshot.hasData)
-                              return const ListTile(
-                                title: Text("Loading..."),
-                                leading: CircleAvatar(),
-                              );
+                    return StreamBuilder<DocumentSnapshot>(
+                      stream: usersRef.doc(friendId).snapshots(),
+                      builder: (context, userSnap) {
+                        if (!userSnap.hasData || !userSnap.data!.exists) {
+                          return const ListTile(title: Text("Unknown user"));
+                        }
 
-                            final userData = userSnapshot.data!.data()
-                                    as Map<String, dynamic>? ??
-                                {};
-                            final name =
-                                "${userData['firstName'] ?? 'Unknown'} ${userData['lastName'] ?? ''}";
-                            final profilePic = userData['profilePic'] ?? '';
+                        final user =
+                            userSnap.data!.data() as Map<String, dynamic>;
+                        final name =
+                            "${user['firstName'] ?? ''} ${user['lastName'] ?? ''}"
+                                .trim();
+                        final profilePic = user['profilePic'] ?? '';
 
-                            return ListTile(
-                              leading: _buildUserAvatar(profilePic, friendId),
-                              title: Text(name),
-                              subtitle: lastMessage.isNotEmpty
-                                  ? Text(
-                                      lastMessage,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    )
-                                  : const Text("Say hi 👋"),
-                              trailing: time.isNotEmpty
-                                  ? Text(
-                                      time,
-                                      style: const TextStyle(
-                                          fontSize: 12, color: Colors.grey),
-                                    )
-                                  : null,
-                              onTap: () => _openChat(friendId, name),
-                            );
-                          },
+                        return ListTile(
+                          leading: _buildUserAvatar(profilePic, friendId),
+                          title: Text(name),
+                          subtitle: Text(
+                            lastMsg == "[Image]" ? "[Image]" : lastMsg,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: Text(
+                            time,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          onTap: () => _openChat(friendId, name),
                         );
                       },
                     );

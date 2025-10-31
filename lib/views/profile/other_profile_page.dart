@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:datem8/services/cloudinary_service.dart';
-import 'package:datem8/helper/utils/blocked_user_service.dart';
 import 'package:intl/intl.dart';
 
 class OtherUserProfilePage extends StatefulWidget {
@@ -24,11 +23,9 @@ class OtherUserProfilePage extends StatefulWidget {
 }
 
 class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
-  final BlockedUserService _blockedService = BlockedUserService();
   final currentUser = FirebaseAuth.instance.currentUser;
 
   bool _isLoading = true;
-  bool _currentUserBlockedOther = false;
 
   String _fullName = '';
   String _bio = '';
@@ -45,14 +42,6 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
   void initState() {
     super.initState();
     _loadProfile();
-    _checkBlockedStatus();
-  }
-
-  Future<void> _checkBlockedStatus() async {
-    if (currentUser == null) return;
-    final blocked =
-        await _blockedService.isUserBlocked(currentUser!.uid, widget.userId);
-    if (mounted) setState(() => _currentUserBlockedOther = blocked);
   }
 
   Future<void> _loadProfile() async {
@@ -204,25 +193,6 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     );
   }
 
-  // ---------------- POPUP MENU ----------------
-  Widget _buildPopupMenu() {
-    return PopupMenuButton<String>(
-      onSelected: (value) async {
-        if (value == 'block') {
-          await _blockedService.blockUser(currentUser!.uid, widget.userId);
-        } else if (value == 'unblock') {
-          await _blockedService.unblockUser(currentUser!.uid, widget.userId);
-        }
-        await _checkBlockedStatus();
-      },
-      itemBuilder: (_) => [
-        _currentUserBlockedOther
-            ? const PopupMenuItem(value: 'unblock', child: Text('Unblock User'))
-            : const PopupMenuItem(value: 'block', child: Text('Block User')),
-      ],
-    );
-  }
-
   // ---------------- USER POSTS ----------------
   Widget _buildUserPosts() {
     return StreamBuilder<QuerySnapshot>(
@@ -363,8 +333,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar:
-          AppBar(title: Text(widget.userName), actions: [_buildPopupMenu()]),
+      appBar: AppBar(title: Text(widget.userName)),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
