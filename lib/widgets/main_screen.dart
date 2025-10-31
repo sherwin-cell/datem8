@@ -21,6 +21,9 @@ class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
   late final List<Widget> _pages;
 
+  final String defaultProfilePic =
+      "https://res.cloudinary.com/dlk8chosr/image/upload/v1759763607/datem8/kegd8r0qpifrhv8wmvxu.jpg";
+
   @override
   void initState() {
     super.initState();
@@ -33,28 +36,32 @@ class _MainScreenState extends State<MainScreen> {
     ];
   }
 
-  Future<String?> _getProfilePic() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return null;
-
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .get();
-
-    if (!doc.exists) return null;
-    return doc.data()?['profilePic'] as String?;
-  }
-
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<String?>(
-      future: _getProfilePic(),
+    final currentUser = FirebaseAuth.instance.currentUser;
+
+    if (currentUser == null) {
+      return const Scaffold(
+        body: Center(child: Text("No user logged in")),
+      );
+    }
+
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .snapshots(),
       builder: (context, snapshot) {
-        final profilePic = snapshot.data;
-        final imageToShow = (profilePic != null && profilePic.isNotEmpty)
-            ? profilePic
-            : "https://res.cloudinary.com/dlk8chosr/image/upload/v1759763607/datem8/kegd8r0qpifrhv8wmvxu.jpg";
+        // Default to placeholder avatar
+        String imageToShow = defaultProfilePic;
+
+        if (snapshot.hasData && snapshot.data!.exists) {
+          final data = snapshot.data!.data() as Map<String, dynamic>?;
+          final profileImageUrl = data?['profileImageUrl'] as String?;
+          if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
+            imageToShow = profileImageUrl;
+          }
+        }
 
         return Scaffold(
           body: SafeArea(child: _pages[_currentIndex]),
@@ -77,9 +84,18 @@ class _MainScreenState extends State<MainScreen> {
                   icon: Icon(AppIcons.friends), label: ''),
               BottomNavigationBarItem(
                 icon: CircleAvatar(
+                  // Use UniqueKey when showing default avatar to prevent Flutter from caching the old image
+                  key: imageToShow == defaultProfilePic
+                      ? UniqueKey()
+                      : ValueKey(imageToShow),
                   radius: 12,
-                  backgroundImage: NetworkImage(imageToShow),
+                  backgroundImage: imageToShow != defaultProfilePic
+                      ? NetworkImage(imageToShow)
+                      : null,
                   backgroundColor: Colors.grey[300],
+                  child: imageToShow == defaultProfilePic
+                      ? const Icon(Icons.person, size: 16, color: Colors.white)
+                      : null,
                 ),
                 label: '',
               ),
