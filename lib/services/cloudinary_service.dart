@@ -15,7 +15,7 @@ class CloudinaryService {
           cloudName: dotenv.env['CLOUDINARY_CLOUD_NAME'] ?? '',
         );
 
-  /// 📁 Pick a single image from gallery
+  /// Pick a single image from gallery
   Future<File?> pickImage() async {
     try {
       final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
@@ -26,10 +26,10 @@ class CloudinaryService {
     }
   }
 
-  /// 📁 Pick multiple images from gallery
+  /// Pick multiple images from gallery
   Future<List<File>> pickMultipleImages() async {
     try {
-      final List<XFile> files = await _picker.pickMultiImage();
+      final files = await _picker.pickMultiImage();
       return files.map((x) => File(x.path)).toList();
     } catch (e) {
       debugPrint("❌ Multi-image picking error: $e");
@@ -37,7 +37,7 @@ class CloudinaryService {
     }
   }
 
-  /// 📸 Take a photo using the camera
+  /// Take a photo using the camera
   Future<File?> takePhoto() async {
     try {
       final pickedFile = await _picker.pickImage(source: ImageSource.camera);
@@ -48,7 +48,7 @@ class CloudinaryService {
     }
   }
 
-  /// ☁️ Upload a single image to Cloudinary and return its secure URL
+  /// Upload a single image to Cloudinary
   Future<String?> uploadImage(File imageFile,
       {String folder = 'datem8'}) async {
     try {
@@ -72,21 +72,21 @@ class CloudinaryService {
     return null;
   }
 
-  /// 📤 Pick an image from gallery and upload it directly
+  /// Pick and upload a single image
   Future<String?> pickAndUploadImage({String folder = 'datem8'}) async {
     final file = await pickImage();
     if (file == null) return null;
     return await uploadImage(file, folder: folder);
   }
 
-  /// 📤 Take a photo and upload it directly
+  /// Take a photo and upload
   Future<String?> takePhotoAndUpload({String folder = 'datem8'}) async {
     final file = await takePhoto();
     if (file == null) return null;
     return await uploadImage(file, folder: folder);
   }
 
-  /// 📤 Pick and upload **multiple images** (returns list of URLs)
+  /// Pick and upload multiple images
   Future<List<String>> pickAndUploadMultipleImages(
       {String folder = 'datem8'}) async {
     try {
@@ -95,8 +95,8 @@ class CloudinaryService {
 
       final List<Future<String?>> uploads =
           files.map((file) => uploadImage(file, folder: folder)).toList();
-      final results = await Future.wait(uploads);
 
+      final results = await Future.wait(uploads);
       final urls = results.whereType<String>().toList();
       debugPrint("✅ Uploaded ${urls.length} of ${files.length} images.");
       return urls;

@@ -41,6 +41,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
   @override
   void initState() {
     super.initState();
+    _profilePic = widget.avatarUrl ?? '';
     _loadProfile();
   }
 
@@ -63,7 +64,8 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
             .toString();
         _bio = data['bio'] ?? '';
         _age = data['age'] ?? 0;
-        _profilePic = widget.avatarUrl ?? data['profilePic'] ?? '';
+        _profilePic =
+            _profilePic.isNotEmpty ? _profilePic : data['profilePic'] ?? '';
         _course = data['course'] ?? '';
         _department = data['department'] ?? '';
         _gender = data['gender'] ?? '';
@@ -80,9 +82,7 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     }
   }
 
-  // ---------------- PROFILE HEADER ----------------
   Widget _buildProfileHeader() {
-    final hasImage = _profilePic.isNotEmpty;
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 24),
       decoration: const BoxDecoration(
@@ -100,9 +100,13 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
             radius: 55,
             backgroundColor: Colors.white,
             child: ClipOval(
-              child: hasImage
-                  ? Image.network(_profilePic,
-                      width: 110, height: 110, fit: BoxFit.cover)
+              child: _profilePic.isNotEmpty
+                  ? Image.network(
+                      _profilePic,
+                      width: 110,
+                      height: 110,
+                      fit: BoxFit.cover,
+                    )
                   : const Icon(Icons.person, size: 60, color: Colors.grey),
             ),
           ),
@@ -123,7 +127,6 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
     );
   }
 
-  // ---------------- INFO SECTIONS ----------------
   Widget _buildInfoCard(IconData icon, String text) => Row(
         children: [
           Icon(icon, color: Colors.deepPurple),
@@ -138,8 +141,10 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
       if (_interestedIn.isNotEmpty)
         _buildInfoCard(Icons.favorite, "Interested in: $_interestedIn"),
       if (_createdAt != null)
-        _buildInfoCard(Icons.calendar_today,
-            "Joined: ${DateFormat('yyyy-MM-dd').format(_createdAt!)}"),
+        _buildInfoCard(
+          Icons.calendar_today,
+          "Joined: ${DateFormat('yyyy-MM-dd').format(_createdAt!)}",
+        ),
     ];
     if (details.isEmpty) return const SizedBox.shrink();
     return Card(
@@ -147,7 +152,9 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
-          padding: const EdgeInsets.all(16), child: Column(children: details)),
+        padding: const EdgeInsets.all(16),
+        child: Column(children: details),
+      ),
     );
   }
 
@@ -184,148 +191,12 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Wrap(
-                spacing: 8,
-                runSpacing: 6,
-                children: _interests.map((e) => Chip(label: Text(e))).toList()),
+              spacing: 8,
+              runSpacing: 6,
+              children: _interests.map((e) => Chip(label: Text(e))).toList(),
+            ),
           ],
         ),
-      ),
-    );
-  }
-
-  // ---------------- USER POSTS ----------------
-  Widget _buildUserPosts() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('posts')
-          .where('userId', isEqualTo: widget.userId)
-          .orderBy('createdAt', descending: true)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Padding(
-            padding: EdgeInsets.all(24),
-            child: Center(child: CircularProgressIndicator()),
-          );
-        }
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Padding(
-            padding: EdgeInsets.all(16),
-            child: Center(child: Text("This user hasn't posted anything yet.")),
-          );
-        }
-
-        final posts = snapshot.data!.docs;
-
-        return ListView.builder(
-          itemCount: posts.length,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemBuilder: (context, index) {
-            final data = posts[index].data() as Map<String, dynamic>;
-            final caption = data['caption'] ?? '';
-            final createdAt =
-                (data['createdAt'] ?? data['timestamp']) is Timestamp
-                    ? ((data['createdAt'] ?? data['timestamp']) as Timestamp)
-                        .toDate()
-                    : null;
-
-            final imageUrls = (data['imageUrls'] != null &&
-                    data['imageUrls'] is List)
-                ? (data['imageUrls'] as List).map((e) => e.toString()).toList()
-                : data['imageUrl'] != null
-                    ? [data['imageUrl'].toString()]
-                    : <String>[];
-
-            return _buildSwipeablePost(imageUrls, caption, createdAt);
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildSwipeablePost(
-      List<String> imageUrls, String caption, DateTime? createdAt) {
-    final pageController = PageController();
-    final currentIndex = ValueNotifier<int>(0);
-
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (imageUrls.isNotEmpty)
-            ClipRRect(
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(16)),
-              child: Stack(
-                alignment: Alignment.bottomCenter,
-                children: [
-                  SizedBox(
-                    height: 300,
-                    child: PageView.builder(
-                      controller: pageController,
-                      itemCount: imageUrls.length,
-                      onPageChanged: (index) => currentIndex.value = index,
-                      itemBuilder: (context, index) {
-                        return Image.network(
-                          imageUrls[index],
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          loadingBuilder: (context, child, progress) =>
-                              progress == null
-                                  ? child
-                                  : const Center(
-                                      child: CircularProgressIndicator()),
-                        );
-                      },
-                    ),
-                  ),
-                  if (imageUrls.length > 1)
-                    ValueListenableBuilder<int>(
-                      valueListenable: currentIndex,
-                      builder: (context, value, _) => Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: List.generate(
-                            imageUrls.length,
-                            (i) => AnimatedContainer(
-                              duration: const Duration(milliseconds: 250),
-                              margin: const EdgeInsets.symmetric(horizontal: 3),
-                              width: value == i ? 10 : 6,
-                              height: 6,
-                              decoration: BoxDecoration(
-                                color:
-                                    value == i ? Colors.white : Colors.white54,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (caption.isNotEmpty)
-                  Text(caption,
-                      style: const TextStyle(fontSize: 15, height: 1.4)),
-                if (createdAt != null)
-                  Text(
-                    DateFormat.yMMMd().add_jm().format(createdAt),
-                    style: const TextStyle(color: Colors.grey, fontSize: 12),
-                  ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -349,17 +220,6 @@ class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
                         _buildProfileDetails(),
                         _buildBioSection(),
                         _buildInterests(),
-                        const SizedBox(height: 12),
-                        const Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            "My Posts",
-                            style: TextStyle(
-                                fontSize: 20, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        _buildUserPosts(),
                         const SizedBox(height: 30),
                       ],
                     ),

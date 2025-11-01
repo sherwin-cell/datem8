@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:datem8/services/cloudinary_service.dart';
-import 'package:datem8/views/post/new_post_page.dart';
-import 'package:datem8/widgets/profile_modal.dart'; // ✅ Added import
+import 'package:datem8/widgets/profile_modal.dart';
 import 'comments_section.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:datem8/views/post/new_post_page.dart';
 
 class ExplorePage extends StatefulWidget {
   final CloudinaryService cloudinaryService;
@@ -35,6 +35,7 @@ class _ExplorePageState extends State<ExplorePage> {
         'firstName': data['firstName'] ?? '',
         'lastName': data['lastName'] ?? '',
         'profilePic': data['profilePic'] ?? '',
+        'uid': data['uid'] ?? userId,
       };
     } catch (_) {
       return {'name': 'Unknown', 'avatar': ''};
@@ -77,15 +78,11 @@ class _ExplorePageState extends State<ExplorePage> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: emojis
-              .map(
-                (emoji) => GestureDetector(
-                  onTap: () => Navigator.pop(context, emoji),
-                  child: Text(
-                    emoji,
-                    style: GoogleFonts.notoColorEmoji(fontSize: 36),
-                  ),
-                ),
-              )
+              .map((emoji) => GestureDetector(
+                    onTap: () => Navigator.pop(context, emoji),
+                    child: Text(emoji,
+                        style: GoogleFonts.notoColorEmoji(fontSize: 36)),
+                  ))
               .toList(),
         ),
       ),
@@ -114,7 +111,11 @@ class _ExplorePageState extends State<ExplorePage> {
   }
 
   void _showProfileModal(BuildContext context, Map<String, dynamic> userData) {
-    showProfileModal(context, userData: userData);
+    showProfileModal(
+      context,
+      userData: userData,
+      cloudinaryService: widget.cloudinaryService, // ✅ fixed
+    );
   }
 
   @override
@@ -135,21 +136,18 @@ class _ExplorePageState extends State<ExplorePage> {
         child: StreamBuilder<QuerySnapshot>(
           stream: postsRef.snapshots(),
           builder: (context, snapshot) {
-            if (!snapshot.hasData) {
+            if (!snapshot.hasData)
               return const Center(child: CircularProgressIndicator());
-            }
-
             final posts = snapshot.data!.docs;
 
             return ListView.builder(
               padding: const EdgeInsets.all(10),
               itemCount: posts.length + 1,
               itemBuilder: (context, index) {
-                // 🔹 New post box
                 if (index == 0) {
+                  // 🔹 New post box
                   final uid = FirebaseAuth.instance.currentUser?.uid;
                   if (uid == null) return const SizedBox();
-
                   return FutureBuilder<Map<String, dynamic>>(
                     future: _getUserInfo(uid),
                     builder: (context, snap) {
@@ -164,10 +162,9 @@ class _ExplorePageState extends State<ExplorePage> {
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: const [
                               BoxShadow(
-                                color: Colors.black12,
-                                blurRadius: 4,
-                                offset: Offset(0, 2),
-                              ),
+                                  color: Colors.black12,
+                                  blurRadius: 4,
+                                  offset: Offset(0, 2)),
                             ],
                           ),
                           child: Row(
@@ -217,7 +214,8 @@ class _ExplorePageState extends State<ExplorePage> {
                 return FutureBuilder<Map<String, dynamic>>(
                   future: _getUserInfo(userId),
                   builder: (context, snap) {
-                    final user = snap.data ?? {'name': 'Unknown', 'avatar': ''};
+                    final user = snap.data ??
+                        {'name': 'Unknown', 'avatar': '', 'uid': userId};
                     final currentPage = _currentPages[postDoc.id] ?? 0;
 
                     return Container(
@@ -227,10 +225,9 @@ class _ExplorePageState extends State<ExplorePage> {
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: const [
                           BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 6,
-                            offset: Offset(0, 3),
-                          ),
+                              color: Colors.black12,
+                              blurRadius: 6,
+                              offset: Offset(0, 3))
                         ],
                       ),
                       child: Column(
@@ -255,23 +252,16 @@ class _ExplorePageState extends State<ExplorePage> {
                             ),
                             title: GestureDetector(
                               onTap: () => _showProfileModal(context, user),
-                              child: Text(
-                                user['name']!,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 15,
-                                ),
-                              ),
+                              child: Text(user['name']!,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 15)),
                             ),
                             subtitle: Text(
-                              DateFormat.yMMMd().add_jm().format(createdAt),
-                              style: const TextStyle(
-                                color: Colors.grey,
-                                fontSize: 12,
-                              ),
-                            ),
+                                DateFormat.yMMMd().add_jm().format(createdAt),
+                                style: const TextStyle(
+                                    color: Colors.grey, fontSize: 12)),
                           ),
-
                           // 🖼️ Images
                           if (images.isNotEmpty)
                             Column(
@@ -283,9 +273,8 @@ class _ExplorePageState extends State<ExplorePage> {
                                     child: PageView.builder(
                                       itemCount: images.length,
                                       onPageChanged: (page) {
-                                        setState(() {
-                                          _currentPages[postDoc.id] = page;
-                                        });
+                                        setState(() =>
+                                            _currentPages[postDoc.id] = page);
                                       },
                                       itemBuilder: (context, i) =>
                                           Image.network(
@@ -325,21 +314,15 @@ class _ExplorePageState extends State<ExplorePage> {
                                   ),
                               ],
                             ),
-
                           // ✍️ Caption
                           if (caption.isNotEmpty)
                             Padding(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 16, vertical: 10),
-                              child: Text(
-                                caption,
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  height: 1.5,
-                                ),
-                              ),
+                              child: Text(caption,
+                                  style: const TextStyle(
+                                      fontSize: 15, height: 1.5)),
                             ),
-
                           // 💬 Reactions & Comments
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -379,51 +362,46 @@ class _ExplorePageState extends State<ExplorePage> {
                                               final emoji =
                                                   await _showEmojiPicker(
                                                       context);
-                                              if (emoji != null) {
+                                              if (emoji != null)
                                                 _updateReaction(
                                                     postDoc.id, emoji);
-                                              }
                                             },
                                             child: Text(
-                                              userReaction.isNotEmpty
-                                                  ? userReaction
-                                                  : '❤️',
-                                              style: GoogleFonts.notoColorEmoji(
-                                                  fontSize: 22),
-                                            ),
+                                                userReaction.isNotEmpty
+                                                    ? userReaction
+                                                    : '❤️',
+                                                style:
+                                                    GoogleFonts.notoColorEmoji(
+                                                        fontSize: 22)),
                                           ),
                                           const SizedBox(width: 6),
                                           if (counts.isNotEmpty)
                                             Row(
                                               children: counts.entries
-                                                  .map(
-                                                    (e) => Padding(
-                                                      padding: const EdgeInsets
-                                                          .symmetric(
-                                                          horizontal: 3),
-                                                      child: Text(
-                                                        "${e.key}${e.value}",
-                                                        style: GoogleFonts
-                                                            .notoColorEmoji(
-                                                                fontSize: 18),
-                                                      ),
-                                                    ),
-                                                  )
+                                                  .map((e) => Padding(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .symmetric(
+                                                                horizontal: 3),
+                                                        child: Text(
+                                                            "${e.key}${e.value}",
+                                                            style: GoogleFonts
+                                                                .notoColorEmoji(
+                                                                    fontSize:
+                                                                        18)),
+                                                      ))
                                                   .toList(),
                                             ),
                                           const Spacer(),
                                           IconButton(
-                                            icon: const Icon(
-                                                Icons.comment_outlined,
-                                                size: 22),
-                                            onPressed: () =>
-                                                _openComments(postDoc.id),
-                                          ),
-                                          Text(
-                                            "$commentCount",
-                                            style: const TextStyle(
-                                                color: Colors.grey),
-                                          ),
+                                              icon: const Icon(
+                                                  Icons.comment_outlined,
+                                                  size: 22),
+                                              onPressed: () =>
+                                                  _openComments(postDoc.id)),
+                                          Text("$commentCount",
+                                              style: const TextStyle(
+                                                  color: Colors.grey)),
                                           const SizedBox(width: 6),
                                         ],
                                       ),

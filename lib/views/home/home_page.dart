@@ -11,6 +11,7 @@ import 'package:datem8/views/home/cte_users.dart';
 
 class HomePage extends StatefulWidget {
   final CloudinaryService cloudinaryService;
+
   const HomePage({super.key, required this.cloudinaryService});
 
   @override
@@ -18,6 +19,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final currentUser = FirebaseAuth.instance.currentUser;
+
   final List<Map<String, dynamic>> departments = [
     {"name": "CBE", "image": "assets/images/cbe.jpg"},
     {"name": "CCS", "image": "assets/images/ccs.jpg"},
@@ -25,7 +28,7 @@ class _HomePageState extends State<HomePage> {
   ];
 
   void _openDepartmentPage(String dept) {
-    late Widget page;
+    Widget? page;
     switch (dept) {
       case "CBE":
         page = const CBEPage();
@@ -36,16 +39,13 @@ class _HomePageState extends State<HomePage> {
       case "CTE":
         page = const CTEPage();
         break;
-      default:
-        return;
     }
+    if (page == null) return;
 
     Navigator.push(
       context,
       PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 900),
-        reverseTransitionDuration: const Duration(milliseconds: 600),
-        pageBuilder: (_, __, ___) => page,
+        pageBuilder: (_, __, ___) => page!,
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           final curved =
               CurvedAnimation(parent: animation, curve: Curves.easeInOutCubic);
@@ -63,33 +63,30 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = FirebaseAuth.instance.currentUser;
-
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 2,
-        centerTitle: false,
         title: StreamBuilder<DocumentSnapshot>(
           stream: FirebaseFirestore.instance
               .collection('users')
-              .doc(FirebaseAuth.instance.currentUser!.uid)
+              .doc(currentUser!.uid)
               .snapshots(),
           builder: (context, snapshot) {
+            String greeting = "Hello 👋";
             Widget avatar = const CircleAvatar(
               radius: 18,
               backgroundColor: Colors.deepPurple,
-              child: Icon(Icons.person, size: 18, color: Colors.white),
+              child: Icon(Icons.person, color: Colors.white, size: 18),
             );
-            String greetingText = "Hello 👋";
 
             if (snapshot.hasData && snapshot.data!.exists) {
               final userData = snapshot.data!.data() as Map<String, dynamic>?;
-              final firstName = (userData?['firstName'] ?? 'User') as String;
-              greetingText = "Hello, $firstName 👋";
+              final firstName = userData?['firstName'] ?? "User";
+              greeting = "Hello, $firstName 👋";
 
-              final profilePic = (userData?['profilePic'] ?? '') as String;
+              final profilePic = userData?['profilePic'] ?? '';
               if (profilePic.isNotEmpty) {
                 avatar = CircleAvatar(
                   radius: 18,
@@ -99,32 +96,36 @@ class _HomePageState extends State<HomePage> {
             }
 
             return InkWell(
-              onTap: () => showProfileModal(context),
+              onTap: () => showProfileModal(
+                context,
+                userData: snapshot.data?.data() != null
+                    ? {
+                        ...snapshot.data!.data() as Map<String, dynamic>,
+                        'uid': snapshot.data!.id
+                      }
+                    : null,
+                cloudinaryService: widget.cloudinaryService,
+              ),
               borderRadius: BorderRadius.circular(24),
-              child: Padding(
-                padding: const EdgeInsets.only(right: 8.0),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    avatar,
-                    const SizedBox(width: 10),
-                    Text(
-                      greetingText,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Colors.deepPurple,
-                      ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  avatar,
+                  const SizedBox(width: 10),
+                  Text(
+                    greeting,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Colors.deepPurple,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             );
           },
         ),
       ),
-
-      // Main Body
       body: RefreshIndicator(
         onRefresh: () async => setState(() {}),
         child: SingleChildScrollView(
@@ -133,17 +134,14 @@ class _HomePageState extends State<HomePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 📍 Departments section
               const Text(
                 "Departments",
                 style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87),
               ),
               const SizedBox(height: 12),
-
               SizedBox(
                 height: 160,
                 child: ListView.separated(
@@ -166,7 +164,6 @@ class _HomePageState extends State<HomePage> {
                                 height: 160,
                                 fit: BoxFit.cover,
                               ),
-                              // subtle overlay only — no text
                               Container(
                                 width: 220,
                                 height: 160,
@@ -174,7 +171,7 @@ class _HomePageState extends State<HomePage> {
                                   gradient: LinearGradient(
                                     colors: [
                                       Colors.transparent,
-                                      Colors.black26,
+                                      Colors.black26
                                     ],
                                     begin: Alignment.topCenter,
                                     end: Alignment.bottomCenter,
@@ -189,87 +186,69 @@ class _HomePageState extends State<HomePage> {
                   },
                 ),
               ),
-
               const SizedBox(height: 25),
-
-              // 👥 All Users Section
               const Text(
-                "People May You Know",
+                "People You May Know",
                 style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87),
               ),
               const SizedBox(height: 8),
-
               StreamBuilder<QuerySnapshot>(
                 stream:
                     FirebaseFirestore.instance.collection('users').snapshots(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Padding(
-                      padding: EdgeInsets.all(40),
-                      child: Center(child: CircularProgressIndicator()),
-                    );
+                    return const Center(child: CircularProgressIndicator());
                   }
-
                   if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return const Padding(
-                      padding: EdgeInsets.all(40),
-                      child: Center(child: Text("No users found 😕")),
-                    );
+                    return const Center(child: Text("No users found 😕"));
                   }
 
-                  final users = snapshot.data!.docs;
+                  final users = snapshot.data!.docs
+                      .where((doc) => doc.id != currentUser!.uid)
+                      .toList();
 
-                  return ListView.builder(
+                  return ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: users.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
-                      final user = users[index].data() as Map<String, dynamic>;
-                      final userId = users[index].id;
+                      final doc = users[index];
+                      final data = doc.data() as Map<String, dynamic>;
+                      final name =
+                          "${data['firstName'] ?? ''} ${data['lastName'] ?? ''}"
+                              .trim();
+                      final profilePic = data['profilePic'] ?? '';
+                      final course = data['course'] ?? '';
 
-                      if (userId == currentUser?.uid) return const SizedBox();
-
-                      final firstName = user['firstName'] ?? '';
-                      final lastName = user['lastName'] ?? '';
-                      final course = user['course'] ?? '';
-                      final profilePic = user['profilePic'] ?? '';
+                      final userDataWithUid = {...data, 'uid': doc.id};
 
                       return Card(
-                        margin: const EdgeInsets.symmetric(vertical: 6),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                            borderRadius: BorderRadius.circular(12)),
                         elevation: 2,
                         child: ListTile(
-                          leading: profilePic.isNotEmpty
-                              ? CircleAvatar(
-                                  backgroundImage: NetworkImage(profilePic),
-                                  radius: 25,
-                                )
-                              : const CircleAvatar(
-                                  radius: 25,
-                                  backgroundColor: Colors.grey,
-                                  child:
-                                      Icon(Icons.person, color: Colors.white),
-                                ),
-                          title: Text(
-                            "$firstName $lastName",
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: Colors.black87,
-                            ),
+                          leading: CircleAvatar(
+                            radius: 25,
+                            backgroundImage: profilePic.isNotEmpty
+                                ? NetworkImage(profilePic)
+                                : null,
+                            child: profilePic.isEmpty
+                                ? const Icon(Icons.person, color: Colors.white)
+                                : null,
                           ),
-                          subtitle: Text(
-                            course,
-                            style: const TextStyle(color: Colors.black54),
+                          title: Text(name,
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Text(course),
+                          onTap: () => showProfileModal(
+                            context,
+                            userData: userDataWithUid,
+                            cloudinaryService: widget.cloudinaryService,
                           ),
-                          onTap: () =>
-                              showProfileModal(context, userData: user),
                         ),
                       );
                     },
