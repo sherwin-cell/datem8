@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:datem8/views/profile/other_profile_page.dart';
 import 'package:datem8/services/cloudinary_service.dart';
+import 'package:datem8/views/profile/other_profile_page.dart';
+import 'package:datem8/services/friends_service.dart';
 
-class ProfileModal extends StatelessWidget {
+class ProfileModal extends StatefulWidget {
   final Map<String, dynamic>? userData;
   final CloudinaryService cloudinaryService;
 
@@ -15,21 +16,105 @@ class ProfileModal extends StatelessWidget {
   });
 
   @override
+  State<ProfileModal> createState() => _ProfileModalState();
+}
+
+class _ProfileModalState extends State<ProfileModal> {
+  final FriendsService _friendsService = FriendsService();
+  bool _isLoading = false;
+  String _friendStatus = "none"; // none | pending | friends | received
+
+  @override
+  void initState() {
+    super.initState();
+    _checkFriendStatus();
+  }
+
+  Future<void> _checkFriendStatus() async {
+    final targetId = widget.userData?['uid'];
+    if (targetId == null) return;
+
+    final status = await _friendsService.getFriendStatus(targetId);
+    setState(() => _friendStatus = status);
+  }
+
+  Future<void> _sendFriendRequest() async {
+    final targetId = widget.userData?['uid'];
+    if (targetId == null) return;
+
+    setState(() => _isLoading = true);
+    try {
+      await _friendsService.sendFriendRequest(targetId);
+      setState(() => _friendStatus = "pending");
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Friend request sent ✅")),
+      );
+    } catch (e) {
+      debugPrint("❌ Error sending friend request: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e")),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _acceptFriendRequest() async {
+    final targetId = widget.userData?['uid'];
+    if (targetId == null) return;
+
+    setState(() => _isLoading = true);
+    try {
+      await _friendsService.acceptFriendRequest(targetId);
+      setState(() => _friendStatus = "friends");
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Friend added successfully 🎉")),
+      );
+    } catch (e) {
+      debugPrint("❌ Error accepting friend request: $e");
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void _handleFriendAction() {
+    if (_friendStatus == "none") {
+      _sendFriendRequest();
+    } else if (_friendStatus == "received") {
+      _acceptFriendRequest();
+    }
+  }
+
+  Widget _buildFriendButton() {
+    switch (_friendStatus) {
+      case "friends":
+        return const Text("Friends ✅");
+      case "pending":
+        return const Text("Pending ⏳");
+      case "received":
+        return const Text("Accept Request");
+      default:
+        return const Text("+ Add Friend");
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final currentUser = FirebaseAuth.instance.currentUser;
-
-    final String displayName = (userData?['firstName'] != null)
-        ? "${userData!['firstName']} ${userData!['lastName']}"
+    final data = widget.userData ?? {};
+    final String displayName = (data['firstName'] != null)
+        ? "${data['firstName']} ${data['lastName']}"
         : currentUser?.displayName ?? "Guest User";
 
-    final String course = userData?['course'] ?? '';
-    final String department = userData?['department'] ?? '';
-    final String bio = userData?['bio'] ?? "Hi, I'm using this app";
-    final int followers = userData?['followers'] ?? 0;
-    final int following = userData?['following'] ?? 0;
-    final String? profilePic = userData?['profilePic'] ?? currentUser?.photoURL;
-    final bool isCurrentUser =
-        userData == null || userData!['uid'] == currentUser?.uid;
+    final String course = data['course'] ?? '';
+    final String department = data['department'] ?? '';
+    final String bio = data['bio'] ?? "Hi, I'm using this app";
+    final int followers = data['followers'] ?? 0;
+    final int following = data['following'] ?? 0;
+    final String? profilePic = data['profilePic'] ?? currentUser?.photoURL;
+    final bool isCurrentUser = data['uid'] == currentUser?.uid;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -77,14 +162,14 @@ class ProfileModal extends StatelessWidget {
                   onPressed: () {
                     if (isCurrentUser) {
                       Navigator.pushNamed(context, '/profile');
-                    } else if (userData?['uid'] != null) {
+                    } else if (data['uid'] != null) {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (_) => OtherUserProfilePage(
-                            userId: userData!['uid'],
+                            userId: data['uid'],
                             userName: displayName,
-                            cloudinaryService: cloudinaryService,
+                            cloudinaryService: widget.cloudinaryService,
                             avatarUrl: profilePic,
                           ),
                         ),
@@ -106,7 +191,7 @@ class ProfileModal extends StatelessWidget {
               if (!isCurrentUser)
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () {},
+                    onPressed: _isLoading ? null : _handleFriendAction,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.deepPurple,
                       foregroundColor: Colors.white,
@@ -115,7 +200,9 @@ class ProfileModal extends StatelessWidget {
                       ),
                       minimumSize: const Size.fromHeight(50),
                     ),
-                    child: const Text("+ Add Friend"),
+                    child: _isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : _buildFriendButton(),
                   ),
                 ),
             ],
@@ -150,7 +237,6 @@ void showProfileModal(
   Map<String, dynamic>? userData,
   required CloudinaryService cloudinaryService,
 }) {
-  // Ensure UID exists
   final Map<String, dynamic>? dataWithUid = userData != null
       ? {...userData, 'uid': userData['uid'] ?? userData['id']}
       : null;

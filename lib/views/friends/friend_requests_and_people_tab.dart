@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:datem8/services/friends_service.dart';
 
 class FriendsRequestsAndPeopleTab extends StatefulWidget {
   final String currentUserId;
 
-  const FriendsRequestsAndPeopleTab({super.key, required this.currentUserId});
+  const FriendsRequestsAndPeopleTab({
+    super.key,
+    required this.currentUserId,
+  });
 
   @override
   State<FriendsRequestsAndPeopleTab> createState() =>
@@ -14,104 +18,50 @@ class FriendsRequestsAndPeopleTab extends StatefulWidget {
 
 class _FriendsRequestsAndPeopleTabState
     extends State<FriendsRequestsAndPeopleTab> {
-  final Set<String> _sentRequests = {};
+  final FriendsService _friendsService = FriendsService();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseDatabase _database = FirebaseDatabase.instance;
+
+  final Set<String> _hiddenUserIds = {}; // Sent or received requests
 
   @override
   void initState() {
     super.initState();
-    _loadSentRequests();
+    _loadHiddenUserIds();
   }
 
-  /// 🔹 Load both sent and received friend requests to hide from suggestions
-  Future<void> _loadSentRequests() async {
-    final firestore = FirebaseFirestore.instance;
-
-    final sentSnapshot = await firestore
+  /// 🔹 Load all users to hide from "People You May Know"
+  Future<void> _loadHiddenUserIds() async {
+    final sent = await _firestore
         .collection('friend_requests')
         .where('from', isEqualTo: widget.currentUserId)
         .get();
-
-    final receivedSnapshot = await firestore
+    final received = await _firestore
         .collection('friend_requests')
         .where('to', isEqualTo: widget.currentUserId)
         .get();
 
     setState(() {
-      _sentRequests.addAll(sentSnapshot.docs.map((doc) => doc['to'] as String));
-      _sentRequests
-          .addAll(receivedSnapshot.docs.map((doc) => doc['from'] as String));
+      _hiddenUserIds.addAll(sent.docs.map((e) => e['to'] as String));
+      _hiddenUserIds.addAll(received.docs.map((e) => e['from'] as String));
     });
   }
 
-  /// 🔹 Send a friend request
-  Future<void> _sendFriendRequest(String toUserId) async {
-    final requestsRef =
-        FirebaseFirestore.instance.collection('friend_requests');
-
-    final existing = await requestsRef
-        .where('from', isEqualTo: widget.currentUserId)
-        .where('to', isEqualTo: toUserId)
-        .get();
-
-    if (existing.docs.isNotEmpty) return;
-
+  /// 🔹 Confirm friend and auto-create chat in Realtime DB
+  Future<void> _confirmFriend(String fromUserId, String requestId) async {
     try {
-      await requestsRef.add({
-        'from': widget.currentUserId,
-        'to': toUserId,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
+      await _friendsService.acceptFriendRequest(fromUserId);
 
-      setState(() => _sentRequests.add(toUserId));
-    } catch (e) {
-      debugPrint('❌ Error sending friend request: $e');
-    }
-  }
-
-  /// 🔹 Confirm friend and create chat in Realtime Database
-  Future<void> _confirmFriend(String fromUserId, String reqId) async {
-    final firestore = FirebaseFirestore.instance;
-    final db = FirebaseDatabase.instance.ref();
-    final currentUserId = widget.currentUserId;
-
-    try {
-      final batch = firestore.batch();
-
-      final currentRef = firestore
-          .collection('friends')
-          .doc(currentUserId)
-          .collection('list')
-          .doc(fromUserId);
-
-      final otherRef = firestore
-          .collection('friends')
-          .doc(fromUserId)
-          .collection('list')
-          .doc(currentUserId);
-
-      batch.set(currentRef, {
-        'mutual': true,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-      batch.set(otherRef, {
-        'mutual': true,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-
-      // Delete friend request
-      batch.delete(firestore.collection('friend_requests').doc(reqId));
-
-      await batch.commit();
-
-      // Create chat in Realtime Database
+      // Create chat
+      final currentUserId = widget.currentUserId;
       final chatId = currentUserId.hashCode <= fromUserId.hashCode
           ? '$currentUserId-$fromUserId'
           : '$fromUserId-$currentUserId';
 
-      final chatRef = db.child('chats').child(chatId);
-      final chatSnapshot = await chatRef.get();
+      final chatRef = _database.ref().child('chats').child(chatId);
+      final chatSnap = await chatRef.get();
 
-      if (!chatSnapshot.exists) {
+      if (!chatSnap.exists) {
         await chatRef.set({
           'participants': {currentUserId: true, fromUserId: true},
           'timestamp': ServerValue.timestamp,
@@ -126,17 +76,19 @@ class _FriendsRequestsAndPeopleTabState
         });
       }
 
-      setState(() => _sentRequests.remove(fromUserId));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Friend added successfully 🎉")),
+      );
     } catch (e) {
-      debugPrint('❌ Error confirming friend: $e');
+      debugPrint("❌ Error confirming friend: $e");
     }
   }
 
-  /// 🔹 Friend request tile
-  Widget _buildFriendRequestTile(
+  /// 🔹 Friend request card
+  Widget _buildFriendRequestCard(
       Map<String, dynamic> user, String reqId, String fromUserId) {
-    final profilePic = user['profilePic'] ?? '';
     final name = "${user['firstName'] ?? ''} ${user['lastName'] ?? ''}".trim();
+    final profilePic = user['profilePic'] ?? '';
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -155,10 +107,15 @@ class _FriendsRequestsAndPeopleTabState
               child: const Text("Confirm"),
             ),
             TextButton(
-              onPressed: () => FirebaseFirestore.instance
-                  .collection('friend_requests')
-                  .doc(reqId)
-                  .delete(),
+              onPressed: () async {
+                await _firestore
+                    .collection('friend_requests')
+                    .doc(reqId)
+                    .delete();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Request deleted ❌")),
+                );
+              },
               child: const Text("Delete"),
             ),
           ],
@@ -167,11 +124,10 @@ class _FriendsRequestsAndPeopleTabState
     );
   }
 
-  /// 🔹 User suggestion tile
-  Widget _buildUserSuggestionTile(
-      Map<String, dynamic> user, String userId, VoidCallback onAdd) {
-    final profilePic = user['profilePic'] ?? '';
+  /// 🔹 Suggested user card
+  Widget _buildSuggestedUserCard(Map<String, dynamic> user, String userId) {
     final name = "${user['firstName'] ?? ''} ${user['lastName'] ?? ''}".trim();
+    final profilePic = user['profilePic'] ?? '';
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -183,7 +139,13 @@ class _FriendsRequestsAndPeopleTabState
         ),
         title: Text(name),
         trailing: ElevatedButton(
-          onPressed: onAdd,
+          onPressed: () async {
+            await _friendsService.sendFriendRequest(userId);
+            setState(() => _hiddenUserIds.add(userId));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Friend request sent to $name ✅")),
+            );
+          },
           child: const Text("Add Friend"),
         ),
       ),
@@ -192,21 +154,24 @@ class _FriendsRequestsAndPeopleTabState
 
   @override
   Widget build(BuildContext context) {
+    final myId = widget.currentUserId;
+
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 🔹 Friend Requests Section
           const Padding(
-            padding: EdgeInsets.all(12.0),
+            padding: EdgeInsets.all(12),
             child: Text(
               "Friend Requests",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ),
           StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
+            stream: _firestore
                 .collection('friend_requests')
-                .where('to', isEqualTo: widget.currentUserId)
+                .where('to', isEqualTo: myId)
                 .snapshots(),
             builder: (context, snapshot) {
               if (!snapshot.hasData) return const SizedBox();
@@ -214,7 +179,7 @@ class _FriendsRequestsAndPeopleTabState
               if (requests.isEmpty) {
                 return const Padding(
                   padding: EdgeInsets.all(12),
-                  child: Text("No requests"),
+                  child: Text("No requests right now"),
                 );
               }
 
@@ -227,75 +192,51 @@ class _FriendsRequestsAndPeopleTabState
                   final fromUserId = req['from'];
 
                   return FutureBuilder<DocumentSnapshot>(
-                    future: FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(fromUserId)
-                        .get(),
+                    future:
+                        _firestore.collection('users').doc(fromUserId).get(),
                     builder: (context, userSnap) {
-                      if (!userSnap.hasData) return const SizedBox();
+                      if (!userSnap.hasData || !userSnap.data!.exists)
+                        return const SizedBox();
                       final user =
                           userSnap.data!.data() as Map<String, dynamic>;
-                      return _buildFriendRequestTile(user, req.id, fromUserId);
+                      return _buildFriendRequestCard(user, req.id, fromUserId);
                     },
                   );
                 },
               );
             },
           ),
+
+          // 🔹 People You May Know Section
           const Padding(
-            padding: EdgeInsets.all(12.0),
+            padding: EdgeInsets.all(12),
             child: Text(
               "People You May Know",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ),
-          StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance.collection('users').snapshots(),
-            builder: (context, userSnapshot) {
-              if (!userSnapshot.hasData) return const SizedBox();
-              final allUsers = userSnapshot.data!.docs;
+          StreamBuilder<List<Map<String, dynamic>>>(
+            stream: _friendsService.peopleYouMayKnow(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) return const SizedBox();
+              final people = snapshot.data!
+                  .where((u) => !_hiddenUserIds.contains(u['uid']))
+                  .toList();
 
-              return FutureBuilder<QuerySnapshot>(
-                future: FirebaseFirestore.instance
-                    .collection('friends')
-                    .doc(widget.currentUserId)
-                    .collection('list')
-                    .get(),
-                builder: (context, friendsSnap) {
-                  if (!friendsSnap.hasData) return const SizedBox();
-                  final friends =
-                      friendsSnap.data!.docs.map((e) => e.id).toSet();
+              if (people.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Text("No suggestions right now"),
+                );
+              }
 
-                  final suggestions = allUsers.where((doc) {
-                    final id = doc.id;
-                    if (id == widget.currentUserId) return false;
-                    if (friends.contains(id)) return false;
-                    if (_sentRequests.contains(id)) return false;
-                    return true;
-                  }).toList();
-
-                  if (suggestions.isEmpty) {
-                    return const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: Text("No suggestions right now"),
-                    );
-                  }
-
-                  return ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: suggestions.length,
-                    itemBuilder: (context, index) {
-                      final user =
-                          suggestions[index].data() as Map<String, dynamic>;
-                      final userId = suggestions[index].id;
-                      return _buildUserSuggestionTile(
-                        user,
-                        userId,
-                        () => _sendFriendRequest(userId),
-                      );
-                    },
-                  );
+              return ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: people.length,
+                itemBuilder: (context, index) {
+                  final user = people[index];
+                  return _buildSuggestedUserCard(user, user['uid']);
                 },
               );
             },

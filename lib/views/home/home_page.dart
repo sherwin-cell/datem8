@@ -20,12 +20,47 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final currentUser = FirebaseAuth.instance.currentUser;
+  final Set<String> _friends = {};
+  final Set<String> _sentRequests = {};
+  final Set<String> _receivedRequests = {};
 
   final List<Map<String, dynamic>> departments = [
     {"name": "CBE", "image": "assets/images/cbe.jpg"},
     {"name": "CCS", "image": "assets/images/ccs.jpg"},
     {"name": "CTE", "image": "assets/images/cte.jpg"},
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFriendData();
+  }
+
+  Future<void> _loadFriendData() async {
+    final uid = currentUser!.uid;
+    final firestore = FirebaseFirestore.instance;
+
+    // Friends list
+    final friendSnap =
+        await firestore.collection('friends').doc(uid).collection('list').get();
+    _friends.addAll(friendSnap.docs.map((e) => e.id));
+
+    // Sent friend requests
+    final sentSnap = await firestore
+        .collection('friend_requests')
+        .where('from', isEqualTo: uid)
+        .get();
+    _sentRequests.addAll(sentSnap.docs.map((e) => e['to'] as String));
+
+    // Received friend requests
+    final recvSnap = await firestore
+        .collection('friend_requests')
+        .where('to', isEqualTo: uid)
+        .get();
+    _receivedRequests.addAll(recvSnap.docs.map((e) => e['from'] as String));
+
+    setState(() {});
+  }
 
   void _openDepartmentPage(String dept) {
     Widget? page;
@@ -40,25 +75,13 @@ class _HomePageState extends State<HomePage> {
         page = const CTEPage();
         break;
     }
-    if (page == null) return;
 
-    Navigator.push(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (_, __, ___) => page!,
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          final curved =
-              CurvedAnimation(parent: animation, curve: Curves.easeInOutCubic);
-          return FadeTransition(
-            opacity: curved,
-            child: ScaleTransition(
-              scale: Tween<double>(begin: 0.96, end: 1.0).animate(curved),
-              child: child,
-            ),
-          );
-        },
-      ),
-    );
+    if (page != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => page!),
+      );
+    }
   }
 
   @override
@@ -95,51 +118,39 @@ class _HomePageState extends State<HomePage> {
               }
             }
 
-            return InkWell(
-              onTap: () => showProfileModal(
-                context,
-                userData: snapshot.data?.data() != null
-                    ? {
-                        ...snapshot.data!.data() as Map<String, dynamic>,
-                        'uid': snapshot.data!.id
-                      }
-                    : null,
-                cloudinaryService: widget.cloudinaryService,
-              ),
-              borderRadius: BorderRadius.circular(24),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  avatar,
-                  const SizedBox(width: 10),
-                  Text(
-                    greeting,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Colors.deepPurple,
-                    ),
+            return Row(
+              children: [
+                avatar,
+                const SizedBox(width: 10),
+                Text(
+                  greeting,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Colors.deepPurple,
                   ),
-                ],
-              ),
+                ),
+              ],
             );
           },
         ),
       ),
       body: RefreshIndicator(
-        onRefresh: () async => setState(() {}),
+        onRefresh: _loadFriendData,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // 🔹 Department section
               const Text(
                 "Departments",
                 style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87),
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
               ),
               const SizedBox(height: 12),
               SizedBox(
@@ -152,47 +163,48 @@ class _HomePageState extends State<HomePage> {
                     final dept = departments[index];
                     return GestureDetector(
                       onTap: () => _openDepartmentPage(dept["name"]),
-                      child: Hero(
-                        tag: dept["name"],
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(18),
-                          child: Stack(
-                            children: [
-                              Image.asset(
-                                dept["image"],
-                                width: 220,
-                                height: 160,
-                                fit: BoxFit.cover,
-                              ),
-                              Container(
-                                width: 220,
-                                height: 160,
-                                decoration: const BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Colors.transparent,
-                                      Colors.black26
-                                    ],
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                  ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(18),
+                        child: Stack(
+                          children: [
+                            Image.asset(
+                              dept["image"],
+                              width: 220,
+                              height: 160,
+                              fit: BoxFit.cover,
+                            ),
+                            Container(
+                              width: 220,
+                              height: 160,
+                              decoration: const BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.transparent,
+                                    Colors.black26,
+                                  ],
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                            // 🔻 Removed the Text label here
+                          ],
                         ),
                       ),
                     );
                   },
                 ),
               ),
+
+              // 🔹 People You May Know section
               const SizedBox(height: 25),
               const Text(
                 "People You May Know",
                 style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87),
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
               ),
               const SizedBox(height: 8),
               StreamBuilder<QuerySnapshot>(
@@ -206,29 +218,40 @@ class _HomePageState extends State<HomePage> {
                     return const Center(child: Text("No users found 😕"));
                   }
 
-                  final users = snapshot.data!.docs
-                      .where((doc) => doc.id != currentUser!.uid)
-                      .toList();
+                  final users = snapshot.data!.docs.where((doc) {
+                    final id = doc.id;
+                    if (id == currentUser!.uid) return false;
+                    if (_friends.contains(id)) return false;
+                    if (_sentRequests.contains(id)) return false;
+                    if (_receivedRequests.contains(id)) return false;
+                    return true;
+                  }).toList();
 
-                  return ListView.separated(
+                  if (users.isEmpty) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(12.0),
+                        child: Text("No new people to suggest 😎"),
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: users.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
-                      final doc = users[index];
-                      final data = doc.data() as Map<String, dynamic>;
+                      final data = users[index].data() as Map<String, dynamic>;
                       final name =
                           "${data['firstName'] ?? ''} ${data['lastName'] ?? ''}"
                               .trim();
                       final profilePic = data['profilePic'] ?? '';
                       final course = data['course'] ?? '';
 
-                      final userDataWithUid = {...data, 'uid': doc.id};
-
                       return Card(
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         elevation: 2,
                         child: ListTile(
                           leading: CircleAvatar(
@@ -240,13 +263,14 @@ class _HomePageState extends State<HomePage> {
                                 ? const Icon(Icons.person, color: Colors.white)
                                 : null,
                           ),
-                          title: Text(name,
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold)),
+                          title: Text(
+                            name,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
                           subtitle: Text(course),
                           onTap: () => showProfileModal(
                             context,
-                            userData: userDataWithUid,
+                            userData: {...data, 'uid': users[index].id},
                             cloudinaryService: widget.cloudinaryService,
                           ),
                         ),
