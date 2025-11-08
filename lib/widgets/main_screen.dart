@@ -20,8 +20,6 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
-  final String _defaultProfilePic =
-      "https://res.cloudinary.com/dlk8chosr/image/upload/v1759763607/datem8/kegd8r0qpifrhv8wmvxu.jpg";
 
   late final User? _currentUser = FirebaseAuth.instance.currentUser;
 
@@ -49,12 +47,17 @@ class _MainScreenState extends State<MainScreen> {
           .doc(_currentUser!.uid)
           .snapshots(),
       builder: (context, snapshot) {
-        String profileImage = _defaultProfilePic;
+        String? profileImage;
 
         if (snapshot.hasData && snapshot.data!.exists) {
           final data = snapshot.data!.data() as Map<String, dynamic>?;
-          final imageUrl = data?['profileImageUrl'] as String?;
-          if (imageUrl?.isNotEmpty ?? false) profileImage = imageUrl!;
+          final imageUrl = data?['profilePic'] as String?;
+          if (imageUrl != null && imageUrl.isNotEmpty) {
+            profileImage = imageUrl;
+          } else if (_currentUser?.photoURL != null &&
+              _currentUser!.photoURL!.isNotEmpty) {
+            profileImage = _currentUser!.photoURL;
+          }
         }
 
         final pages = _buildPages();
@@ -79,17 +82,22 @@ class _MainScreenState extends State<MainScreen> {
               const BottomNavigationBarItem(
                   icon: Icon(AppIcons.friends), label: ''),
               BottomNavigationBarItem(
-                icon: CircleAvatar(
-                  key: ValueKey(profileImage),
-                  radius: 12,
-                  backgroundColor: Colors.grey[300],
-                  backgroundImage: profileImage != _defaultProfilePic
-                      ? NetworkImage(profileImage)
-                      : null,
-                  child: profileImage == _defaultProfilePic
-                      ? const Icon(Icons.person, size: 16, color: Colors.white)
-                      : null,
-                ),
+                icon: profileImage != null
+                    ? CircleAvatar(
+                        key: ValueKey(profileImage),
+                        radius: 12,
+                        backgroundImage: NetworkImage(profileImage),
+                        backgroundColor: Colors.transparent,
+                      )
+                    : CircleAvatar(
+                        radius: 12,
+                        backgroundColor: Colors.grey[300],
+                        child: const Icon(
+                          Icons.person,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                      ),
                 label: '',
               ),
             ],

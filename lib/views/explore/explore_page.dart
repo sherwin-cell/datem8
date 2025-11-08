@@ -145,36 +145,9 @@ class _ExplorePageState extends State<ExplorePage> {
 
             return ListView.builder(
               padding: const EdgeInsets.all(10),
-              itemCount: posts.length + 1,
+              itemCount: posts.length,
               itemBuilder: (context, index) {
-                // 🔹 New post box without avatar
-                if (index == 0) {
-                  return GestureDetector(
-                    onTap: _openNewPost,
-                    child: Container(
-                      padding: const EdgeInsets.all(14),
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 4,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: const Text(
-                        "Share something you're grateful for...",
-                        style: TextStyle(fontSize: 15, color: Colors.black54),
-                      ),
-                    ),
-                  );
-                }
-
-                // 🔹 Post cards
-                final postDoc = posts[index - 1];
+                final postDoc = posts[index];
                 final postData = postDoc.data() as Map<String, dynamic>;
                 final caption = postData['caption'] ?? '';
                 final userId = postData['userId'] ?? '';
@@ -399,6 +372,11 @@ class _ExplorePageState extends State<ExplorePage> {
             );
           },
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _openNewPost,
+        backgroundColor: const Color(0xFF6A6969),
+        child: const Icon(Icons.add),
       ),
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:datem8/services/cloudinary_service.dart';
 import 'package:datem8/views/profile/other_profile_page.dart';
@@ -111,8 +112,6 @@ class _ProfileModalState extends State<ProfileModal> {
     final String course = data['course'] ?? '';
     final String department = data['department'] ?? '';
     final String bio = data['bio'] ?? "Hi, I'm using this app";
-    final int followers = data['followers'] ?? 0;
-    final int following = data['following'] ?? 0;
     final String? profilePic = data['profilePic'] ?? currentUser?.photoURL;
     final bool isCurrentUser = data['uid'] == currentUser?.uid;
 
@@ -142,14 +141,29 @@ class _ProfileModalState extends State<ProfileModal> {
           Text("$course - $department",
               style: const TextStyle(color: Colors.black54, fontSize: 14)),
           const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _StatWidget(label: "Followers", count: followers),
-              const SizedBox(width: 24),
-              _StatWidget(label: "Following", count: following),
-            ],
+
+          // Followers & Following Count
+          FutureBuilder<int>(
+            future: _getFollowersCount(data['uid']),
+            builder: (context, followersSnapshot) {
+              int followersCount = followersSnapshot.data ?? 0;
+              return FutureBuilder<int>(
+                future: _getFollowingCount(data['uid']),
+                builder: (context, followingSnapshot) {
+                  int followingCount = followingSnapshot.data ?? 0;
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _StatWidget(label: "Followers", count: followersCount),
+                      const SizedBox(width: 24),
+                      _StatWidget(label: "Following", count: followingCount),
+                    ],
+                  );
+                },
+              );
+            },
           ),
+
           const SizedBox(height: 16),
           Text(bio,
               style: const TextStyle(color: Colors.black87),
@@ -210,6 +224,24 @@ class _ProfileModalState extends State<ProfileModal> {
         ],
       ),
     );
+  }
+
+  // 🔥 Get followers count
+  Future<int> _getFollowersCount(String uid) async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('friend_requests')
+        .where('to', isEqualTo: uid)
+        .get();
+    return snapshot.docs.length;
+  }
+
+  // 🔥 Get following count
+  Future<int> _getFollowingCount(String uid) async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('friend_requests')
+        .where('from', isEqualTo: uid)
+        .get();
+    return snapshot.docs.length;
   }
 }
 
