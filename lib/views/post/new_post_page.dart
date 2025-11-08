@@ -223,8 +223,6 @@ class _NewPostPageState extends State<NewPostPage> {
 
   @override
   Widget build(BuildContext context) {
-    final userId = FirebaseAuth.instance.currentUser?.uid;
-
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: WillPopScope(
@@ -254,52 +252,24 @@ class _NewPostPageState extends State<NewPostPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (userId != null)
-                    StreamBuilder<DocumentSnapshot>(
-                      stream: FirebaseFirestore.instance
-                          .collection('users')
-                          .doc(userId)
-                          .snapshots(),
-                      builder: (context, snapshot) {
-                        final profilePic =
-                            snapshot.hasData && snapshot.data!.exists
-                                ? snapshot.data!.get('profilePic') ?? ''
-                                : '';
-
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            CircleAvatar(
-                              radius: 20,
-                              backgroundImage: profilePic.isNotEmpty
-                                  ? NetworkImage(profilePic)
-                                  : null,
-                              backgroundColor: Colors.grey[300],
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 10, horizontal: 14),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[100],
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: TextField(
-                                  controller: _captionController,
-                                  maxLines: null,
-                                  style: const TextStyle(fontSize: 16),
-                                  decoration: InputDecoration(
-                                    hintText: _currentPrompt,
-                                    border: InputBorder.none,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
+                  // Only caption input now
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 10, horizontal: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(16),
                     ),
+                    child: TextField(
+                      controller: _captionController,
+                      maxLines: null,
+                      style: const TextStyle(fontSize: 16),
+                      decoration: InputDecoration(
+                        hintText: _currentPrompt,
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 24),
                   _buildImagePreview(),
                   const SizedBox(height: 24),

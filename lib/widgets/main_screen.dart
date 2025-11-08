@@ -3,14 +3,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:datem8/services/cloudinary_service.dart';
 import 'package:datem8/views/home/home_page.dart';
-import 'package:datem8/views/chat/chat_page.dart';
 import 'package:datem8/views/friends/friends_page.dart';
 import 'package:datem8/views/profile/profile_page.dart';
 import 'package:datem8/views/explore/explore_page.dart';
+import 'package:datem8/views/chat/chat_page.dart';
 import 'package:datem8/helper/app.icons.dart';
 
 class MainScreen extends StatefulWidget {
   final CloudinaryService cloudinaryService;
+
   const MainScreen({super.key, required this.cloudinaryService});
 
   @override
@@ -19,15 +20,13 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
-  late final List<Widget> _pages;
-
-  final String defaultProfilePic =
+  final String _defaultProfilePic =
       "https://res.cloudinary.com/dlk8chosr/image/upload/v1759763607/datem8/kegd8r0qpifrhv8wmvxu.jpg";
 
-  @override
-  void initState() {
-    super.initState();
-    _pages = [
+  late final User? _currentUser = FirebaseAuth.instance.currentUser;
+
+  List<Widget> _buildPages() {
+    return [
       HomePage(cloudinaryService: widget.cloudinaryService),
       ChatPage(cloudinaryService: widget.cloudinaryService),
       ExplorePage(cloudinaryService: widget.cloudinaryService),
@@ -38,9 +37,7 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = FirebaseAuth.instance.currentUser;
-
-    if (currentUser == null) {
+    if (_currentUser == null) {
       return const Scaffold(
         body: Center(child: Text("No user logged in")),
       );
@@ -49,30 +46,29 @@ class _MainScreenState extends State<MainScreen> {
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
           .collection('users')
-          .doc(currentUser.uid)
+          .doc(_currentUser!.uid)
           .snapshots(),
       builder: (context, snapshot) {
-        // Default to placeholder avatar
-        String imageToShow = defaultProfilePic;
+        String profileImage = _defaultProfilePic;
 
         if (snapshot.hasData && snapshot.data!.exists) {
           final data = snapshot.data!.data() as Map<String, dynamic>?;
-          final profileImageUrl = data?['profileImageUrl'] as String?;
-          if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
-            imageToShow = profileImageUrl;
-          }
+          final imageUrl = data?['profileImageUrl'] as String?;
+          if (imageUrl?.isNotEmpty ?? false) profileImage = imageUrl!;
         }
 
+        final pages = _buildPages();
+
         return Scaffold(
-          body: SafeArea(child: _pages[_currentIndex]),
+          body: SafeArea(child: pages[_currentIndex]),
           bottomNavigationBar: BottomNavigationBar(
             currentIndex: _currentIndex,
-            onTap: (index) => setState(() => _currentIndex = index),
             type: BottomNavigationBarType.fixed,
             selectedItemColor: Colors.blue,
             unselectedItemColor: Colors.grey,
             showSelectedLabels: false,
             showUnselectedLabels: false,
+            onTap: (index) => setState(() => _currentIndex = index),
             items: [
               const BottomNavigationBarItem(
                   icon: Icon(AppIcons.home), label: ''),
@@ -84,16 +80,13 @@ class _MainScreenState extends State<MainScreen> {
                   icon: Icon(AppIcons.friends), label: ''),
               BottomNavigationBarItem(
                 icon: CircleAvatar(
-                  // Use UniqueKey when showing default avatar to prevent Flutter from caching the old image
-                  key: imageToShow == defaultProfilePic
-                      ? UniqueKey()
-                      : ValueKey(imageToShow),
+                  key: ValueKey(profileImage),
                   radius: 12,
-                  backgroundImage: imageToShow != defaultProfilePic
-                      ? NetworkImage(imageToShow)
-                      : null,
                   backgroundColor: Colors.grey[300],
-                  child: imageToShow == defaultProfilePic
+                  backgroundImage: profileImage != _defaultProfilePic
+                      ? NetworkImage(profileImage)
+                      : null,
+                  child: profileImage == _defaultProfilePic
                       ? const Icon(Icons.person, size: 16, color: Colors.white)
                       : null,
                 ),

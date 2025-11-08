@@ -78,11 +78,13 @@ class _ExplorePageState extends State<ExplorePage> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: emojis
-              .map((emoji) => GestureDetector(
-                    onTap: () => Navigator.pop(context, emoji),
-                    child: Text(emoji,
-                        style: GoogleFonts.notoColorEmoji(fontSize: 36)),
-                  ))
+              .map(
+                (emoji) => GestureDetector(
+                  onTap: () => Navigator.pop(context, emoji),
+                  child: Text(emoji,
+                      style: GoogleFonts.notoColorEmoji(fontSize: 36)),
+                ),
+              )
               .toList(),
         ),
       ),
@@ -114,7 +116,7 @@ class _ExplorePageState extends State<ExplorePage> {
     showProfileModal(
       context,
       userData: userData,
-      cloudinaryService: widget.cloudinaryService, // ✅ fixed
+      cloudinaryService: widget.cloudinaryService,
     );
   }
 
@@ -138,60 +140,36 @@ class _ExplorePageState extends State<ExplorePage> {
           builder: (context, snapshot) {
             if (!snapshot.hasData)
               return const Center(child: CircularProgressIndicator());
+
             final posts = snapshot.data!.docs;
 
             return ListView.builder(
               padding: const EdgeInsets.all(10),
               itemCount: posts.length + 1,
               itemBuilder: (context, index) {
+                // 🔹 New post box without avatar
                 if (index == 0) {
-                  // 🔹 New post box
-                  final uid = FirebaseAuth.instance.currentUser?.uid;
-                  if (uid == null) return const SizedBox();
-                  return FutureBuilder<Map<String, dynamic>>(
-                    future: _getUserInfo(uid),
-                    builder: (context, snap) {
-                      final avatar = snap.data?['avatar'] ?? '';
-                      return GestureDetector(
-                        onTap: _openNewPost,
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          margin: const EdgeInsets.only(bottom: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: const [
-                              BoxShadow(
-                                  color: Colors.black12,
-                                  blurRadius: 4,
-                                  offset: Offset(0, 2)),
-                            ],
+                  return GestureDetector(
+                    onTap: _openNewPost,
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 4,
+                            offset: Offset(0, 2),
                           ),
-                          child: Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 22,
-                                backgroundImage: avatar.isNotEmpty
-                                    ? NetworkImage(avatar)
-                                    : null,
-                                child: avatar.isEmpty
-                                    ? const Icon(Icons.person,
-                                        color: Colors.grey)
-                                    : null,
-                              ),
-                              const SizedBox(width: 12),
-                              const Expanded(
-                                child: Text(
-                                  "Share something you're grateful for...",
-                                  style: TextStyle(
-                                      fontSize: 15, color: Colors.black54),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
+                        ],
+                      ),
+                      child: const Text(
+                        "Share something you're grateful for...",
+                        style: TextStyle(fontSize: 15, color: Colors.black54),
+                      ),
+                    ),
                   );
                 }
 
@@ -262,26 +240,23 @@ class _ExplorePageState extends State<ExplorePage> {
                                 style: const TextStyle(
                                     color: Colors.grey, fontSize: 12)),
                           ),
+
                           // 🖼️ Images
                           if (images.isNotEmpty)
                             Column(
                               children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(0),
-                                  child: SizedBox(
-                                    height: 260,
-                                    child: PageView.builder(
-                                      itemCount: images.length,
-                                      onPageChanged: (page) {
-                                        setState(() =>
-                                            _currentPages[postDoc.id] = page);
-                                      },
-                                      itemBuilder: (context, i) =>
-                                          Image.network(
-                                        images[i],
-                                        fit: BoxFit.cover,
-                                        width: double.infinity,
-                                      ),
+                                SizedBox(
+                                  height: 260,
+                                  child: PageView.builder(
+                                    itemCount: images.length,
+                                    onPageChanged: (page) {
+                                      setState(() =>
+                                          _currentPages[postDoc.id] = page);
+                                    },
+                                    itemBuilder: (context, i) => Image.network(
+                                      images[i],
+                                      fit: BoxFit.cover,
+                                      width: double.infinity,
                                     ),
                                   ),
                                 ),
@@ -314,6 +289,7 @@ class _ExplorePageState extends State<ExplorePage> {
                                   ),
                               ],
                             ),
+
                           // ✍️ Caption
                           if (caption.isNotEmpty)
                             Padding(
@@ -323,6 +299,7 @@ class _ExplorePageState extends State<ExplorePage> {
                                   style: const TextStyle(
                                       fontSize: 15, height: 1.5)),
                             ),
+
                           // 💬 Reactions & Comments
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -350,6 +327,7 @@ class _ExplorePageState extends State<ExplorePage> {
                                   builder: (context, commentSnap) {
                                     final commentCount =
                                         commentSnap.data?.docs.length ?? 0;
+
                                     return Padding(
                                       padding:
                                           const EdgeInsets.only(bottom: 12),
@@ -394,11 +372,12 @@ class _ExplorePageState extends State<ExplorePage> {
                                             ),
                                           const Spacer(),
                                           IconButton(
-                                              icon: const Icon(
-                                                  Icons.comment_outlined,
-                                                  size: 22),
-                                              onPressed: () =>
-                                                  _openComments(postDoc.id)),
+                                            icon: const Icon(
+                                                Icons.comment_outlined,
+                                                size: 22),
+                                            onPressed: () =>
+                                                _openComments(postDoc.id),
+                                          ),
                                           Text("$commentCount",
                                               style: const TextStyle(
                                                   color: Colors.grey)),
