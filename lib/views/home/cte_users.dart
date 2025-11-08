@@ -6,8 +6,11 @@ class CTEPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
           // 🔹 AppBar with Hero image + gradient overlay
@@ -18,45 +21,50 @@ class CTEPage extends StatelessWidget {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // 🔹 Hero department image
                   Hero(
                     tag: "CTE",
                     child: Image.asset(
-                      "assets/images/cte.jpg", // 👈 Make sure this image exists
+                      "assets/images/cte.jpg",
                       fit: BoxFit.cover,
                     ),
                   ),
-
-                  // 🔹 Gradient overlay
+                  // 🔹 Gradient overlay (purple)
                   Container(
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          Color(0x99000000),
-                          Color(0x00000000),
-                          Color(0xCC1976D2), // 👈 Blue shade for CTE
+                          Colors.black.withOpacity(0.6),
+                          Colors.transparent,
+                          const Color(0xCC7E57C2),
                         ],
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                       ),
                     ),
                   ),
-
-                  // 🔹 Department title and subtitle
-                  const Positioned(
+                  // 🔹 Title & subtitle
+                  Positioned(
                     left: 20,
                     bottom: 20,
                     right: 20,
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Icon(Icons.school, color: Colors.white, size: 36),
-                        SizedBox(width: 10),
+                        const Icon(Icons.school, color: Colors.white, size: 36),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
+                            children: const [
+                              Text(
+                                "College of Teacher Education",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                               SizedBox(height: 4),
                               Text(
                                 "Meet our CTE students below 👇",
@@ -74,10 +82,10 @@ class CTEPage extends StatelessWidget {
                 ],
               ),
             ),
-            backgroundColor: const Color(0xFF1976D2),
+            backgroundColor: const Color(0xFF7E57C2),
           ),
 
-          // 🔹 Users list
+          // 🔹 User list
           SliverToBoxAdapter(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
@@ -119,7 +127,7 @@ class CTEPage extends StatelessWidget {
                     final profilePic = user['profilePic'] ?? '';
 
                     return Card(
-                      color: Colors.white,
+                      color: isDark ? const Color(0xFF2C2C2E) : Colors.white,
                       margin: const EdgeInsets.symmetric(vertical: 8),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -133,22 +141,27 @@ class CTEPage extends StatelessWidget {
                                 backgroundImage: NetworkImage(profilePic),
                                 radius: 25,
                               )
-                            : const CircleAvatar(
+                            : CircleAvatar(
                                 radius: 25,
-                                backgroundColor: Color(0xFF64B5F6),
-                                child: Icon(Icons.person, color: Colors.white),
+                                backgroundColor: isDark
+                                    ? const Color(0xFF9575CD)
+                                    : const Color(0xFFB39DDB),
+                                child: const Icon(Icons.person,
+                                    color: Colors.white),
                               ),
                         title: Text(
                           "$firstName $lastName",
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
-                            color: Colors.black87,
+                            color: isDark ? Colors.white : Colors.black87,
                           ),
                         ),
                         subtitle: Text(
                           course,
-                          style: const TextStyle(color: Colors.black54),
+                          style: TextStyle(
+                            color: isDark ? Colors.white70 : Colors.black54,
+                          ),
                         ),
                       ),
                     );

@@ -78,7 +78,7 @@ class _HomePageState extends State<HomePage> {
         page = const CTEPage();
         break;
       default:
-        return; // If department is unknown, do nothing
+        return;
     }
 
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));
@@ -86,12 +86,16 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor:
+            theme.appBarTheme.backgroundColor ?? theme.colorScheme.surface,
         elevation: 2,
-        automaticallyImplyLeading: false, // ← removes the back button
+        automaticallyImplyLeading: false,
         title: StreamBuilder<DocumentSnapshot>(
           stream: FirebaseFirestore.instance
               .collection('users')
@@ -99,10 +103,10 @@ class _HomePageState extends State<HomePage> {
               .snapshots(),
           builder: (context, snapshot) {
             String greeting = "Hello 👋";
-            Widget avatar = const CircleAvatar(
+            Widget avatar = CircleAvatar(
               radius: 18,
-              backgroundColor: Colors.deepPurple,
-              child: Icon(Icons.person, color: Colors.white, size: 18),
+              backgroundColor: theme.colorScheme.primary,
+              child: const Icon(Icons.person, color: Colors.white, size: 18),
             );
 
             if (snapshot.hasData && snapshot.data!.exists) {
@@ -113,7 +117,9 @@ class _HomePageState extends State<HomePage> {
               final profilePic = userData?['profilePic'] ?? '';
               if (profilePic.isNotEmpty) {
                 avatar = CircleAvatar(
-                    radius: 18, backgroundImage: NetworkImage(profilePic));
+                  radius: 18,
+                  backgroundImage: NetworkImage(profilePic),
+                );
               }
             }
 
@@ -124,10 +130,9 @@ class _HomePageState extends State<HomePage> {
                 Expanded(
                   child: Text(
                     greeting,
-                    style: const TextStyle(
+                    style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Colors.deepPurple,
+                      color: theme.colorScheme.primary,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -151,13 +156,11 @@ class _HomePageState extends State<HomePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Departments
-              const Text(
+              // Departments Section
+              Text(
                 "Departments",
-                style: TextStyle(
-                  fontSize: 20,
+                style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
                 ),
               ),
               const SizedBox(height: 12),
@@ -184,9 +187,12 @@ class _HomePageState extends State<HomePage> {
                             Container(
                               width: 220,
                               height: 160,
-                              decoration: const BoxDecoration(
+                              decoration: BoxDecoration(
                                 gradient: LinearGradient(
-                                  colors: [Colors.transparent, Colors.black26],
+                                  colors: [
+                                    Colors.transparent,
+                                    isDark ? Colors.black54 : Colors.black26,
+                                  ],
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
                                 ),
@@ -202,12 +208,10 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 25),
 
               // People You May Know
-              const Text(
+              Text(
                 "People You May Know",
-                style: TextStyle(
-                  fontSize: 18,
+                style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
                 ),
               ),
               const SizedBox(height: 8),
@@ -219,7 +223,12 @@ class _HomePageState extends State<HomePage> {
                     return const Center(child: CircularProgressIndicator());
                   }
                   if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return const Center(child: Text("No users found 😕"));
+                    return Center(
+                      child: Text(
+                        "No users found 😕",
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    );
                   }
 
                   final users = snapshot.data!.docs.where((doc) {
@@ -231,10 +240,13 @@ class _HomePageState extends State<HomePage> {
                   }).toList();
 
                   if (users.isEmpty) {
-                    return const Center(
+                    return Center(
                       child: Padding(
-                        padding: EdgeInsets.all(12.0),
-                        child: Text("No new people to suggest 😎"),
+                        padding: const EdgeInsets.all(12.0),
+                        child: Text(
+                          "No new people to suggest 😎",
+                          style: theme.textTheme.bodyMedium,
+                        ),
                       ),
                     );
                   }
@@ -252,8 +264,10 @@ class _HomePageState extends State<HomePage> {
                       final course = data['course'] ?? '';
 
                       return Card(
+                        color: theme.cardColor,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         elevation: 2,
                         child: ListTile(
                           leading: CircleAvatar(
@@ -261,14 +275,21 @@ class _HomePageState extends State<HomePage> {
                             backgroundImage: profilePic.isNotEmpty
                                 ? NetworkImage(profilePic)
                                 : null,
+                            backgroundColor:
+                                theme.colorScheme.primary.withOpacity(0.2),
                             child: profilePic.isEmpty
-                                ? const Icon(Icons.person, color: Colors.white)
+                                ? Icon(Icons.person,
+                                    color: theme.colorScheme.onSurface)
                                 : null,
                           ),
-                          title: Text(name,
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text(course),
+                          title: Text(
+                            name,
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          subtitle:
+                              Text(course, style: theme.textTheme.bodyMedium),
                           onTap: () => showProfileModal(
                             context,
                             userData: {...data, 'uid': users[index].id},

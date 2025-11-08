@@ -44,24 +44,26 @@ class _FriendsPageState extends State<FriendsPage>
 
   @override
   Widget build(BuildContext context) {
+    //nal theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: Colors.grey[900],
       appBar: AppBar(
-        automaticallyImplyLeading: false, // ← removes the back button
+        automaticallyImplyLeading: false, // removes the back button
         title: const Text(
           "Friends",
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: Color(0xFF342F2F),
+            color: Colors.white,
           ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.grey[850],
         elevation: 2,
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
           labelColor: Colors.redAccent,
-          unselectedLabelColor: Colors.black54,
+          unselectedLabelColor: Colors.grey[400],
           indicator: const UnderlineTabIndicator(
             borderSide: BorderSide(width: 3.0, color: Colors.redAccent),
             insets: EdgeInsets.symmetric(horizontal: 16),
@@ -71,7 +73,12 @@ class _FriendsPageState extends State<FriendsPage>
       ),
       body: TabBarView(
         controller: _tabController,
-        children: _tabViews,
+        children: _tabViews.map((tabView) {
+          return Container(
+            color: Colors.grey[900],
+            child: tabView,
+          );
+        }).toList(),
       ),
     );
   }

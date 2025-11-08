@@ -69,7 +69,7 @@ class _ExplorePageState extends State<ExplorePage> {
     const emojis = ['❤️', '😆', '😮', '😢', '😡'];
     return showModalBottomSheet<String>(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.grey[850],
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -124,22 +124,28 @@ class _ExplorePageState extends State<ExplorePage> {
   Widget build(BuildContext context) {
     final postsRef =
         _firestore.collection('posts').orderBy('createdAt', descending: true);
+    //nal theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F3F7),
+      backgroundColor: Colors.grey[900],
       appBar: AppBar(
         title: const Text('Explore'),
-        backgroundColor: const Color(0xFF6A6969),
+        backgroundColor: Colors.grey[850],
         elevation: 0,
         automaticallyImplyLeading: false,
       ),
       body: RefreshIndicator(
+        color: Colors.purpleAccent,
+        backgroundColor: Colors.grey[800],
         onRefresh: _refreshPosts,
         child: StreamBuilder<QuerySnapshot>(
           stream: postsRef.snapshots(),
           builder: (context, snapshot) {
             if (!snapshot.hasData)
-              return const Center(child: CircularProgressIndicator());
+              return const Center(
+                  child: CircularProgressIndicator(
+                color: Colors.purpleAccent,
+              ));
             final posts = snapshot.data!.docs;
 
             return ListView.builder(
@@ -171,13 +177,13 @@ class _ExplorePageState extends State<ExplorePage> {
                     return Container(
                       margin: const EdgeInsets.only(bottom: 14),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Colors.grey[850],
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: const [
                           BoxShadow(
-                              color: Colors.black12,
+                              color: Colors.black54,
                               blurRadius: 6,
-                              offset: Offset(0, 3))
+                              offset: Offset(0, 3)),
                         ],
                       ),
                       child: Column(
@@ -191,6 +197,7 @@ class _ExplorePageState extends State<ExplorePage> {
                               onTap: () => _showProfileModal(context, user),
                               child: CircleAvatar(
                                 radius: 22,
+                                backgroundColor: Colors.grey[700],
                                 backgroundImage: user['avatar']!.isNotEmpty
                                     ? NetworkImage(user['avatar']!)
                                     : null,
@@ -205,14 +212,30 @@ class _ExplorePageState extends State<ExplorePage> {
                               child: Text(user['name']!,
                                   style: const TextStyle(
                                       fontWeight: FontWeight.w600,
-                                      fontSize: 15)),
+                                      fontSize: 15,
+                                      color: Colors.white)),
                             ),
                             subtitle: Text(
                               DateFormat.yMMMd().add_jm().format(createdAt),
-                              style: const TextStyle(
-                                  color: Colors.grey, fontSize: 12),
+                              style: TextStyle(
+                                  color: Colors.grey[400], fontSize: 12),
                             ),
                           ),
+
+                          // Caption
+                          if (caption.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 6),
+                              child: Text(
+                                caption,
+                                style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.white70),
+                              ),
+                            ),
+
                           // Post Images
                           if (images.isNotEmpty)
                             Column(
@@ -223,10 +246,13 @@ class _ExplorePageState extends State<ExplorePage> {
                                     itemCount: images.length,
                                     onPageChanged: (page) => setState(
                                         () => _currentPages[postDoc.id] = page),
-                                    itemBuilder: (context, i) => Image.network(
-                                      images[i],
-                                      fit: BoxFit.cover,
-                                      width: double.infinity,
+                                    itemBuilder: (context, i) => ClipRRect(
+                                      borderRadius: BorderRadius.circular(16),
+                                      child: Image.network(
+                                        images[i],
+                                        fit: BoxFit.cover,
+                                        width: double.infinity,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -248,8 +274,8 @@ class _ExplorePageState extends State<ExplorePage> {
                                           width: i == currentPage ? 20 : 8,
                                           decoration: BoxDecoration(
                                             color: i == currentPage
-                                                ? const Color(0xFF6A1B9A)
-                                                : Colors.grey[400],
+                                                ? Colors.purpleAccent
+                                                : Colors.grey[600],
                                             borderRadius:
                                                 BorderRadius.circular(10),
                                           ),
@@ -259,15 +285,7 @@ class _ExplorePageState extends State<ExplorePage> {
                                   ),
                               ],
                             ),
-                          // Caption
-                          if (caption.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 10),
-                              child: Text(caption,
-                                  style: const TextStyle(
-                                      fontSize: 15, height: 1.5)),
-                            ),
+
                           // Reactions & Comments
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -342,13 +360,14 @@ class _ExplorePageState extends State<ExplorePage> {
                                           IconButton(
                                             icon: const Icon(
                                                 Icons.comment_outlined,
-                                                size: 22),
+                                                size: 22,
+                                                color: Colors.white),
                                             onPressed: () =>
                                                 _openComments(postDoc.id),
                                           ),
                                           Text("$commentCount",
-                                              style: const TextStyle(
-                                                  color: Colors.grey)),
+                                              style: TextStyle(
+                                                  color: Colors.grey[400])),
                                           const SizedBox(width: 6),
                                         ],
                                       ),

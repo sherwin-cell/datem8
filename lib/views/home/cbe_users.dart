@@ -6,14 +6,17 @@ class CBEPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
           // 🔹 AppBar with Hero image + gradient overlay
           SliverAppBar(
             pinned: true,
-            expandedHeight: 220, // same as CCS for consistency
+            expandedHeight: 220,
             flexibleSpace: FlexibleSpaceBar(
               background: Stack(
                 fit: StackFit.expand,
@@ -26,15 +29,14 @@ class CBEPage extends StatelessWidget {
                       fit: BoxFit.cover,
                     ),
                   ),
-
-                  // 🔹 Gradient overlay for readability
+                  // 🔹 Gradient overlay
                   Container(
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
                           Color(0x99000000),
                           Color(0x00000000),
-                          Color(0xCCF57C00), // orange shade for CBE
+                          Color(0xCCF57C00),
                         ],
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
@@ -122,7 +124,7 @@ class CBEPage extends StatelessWidget {
                       duration: const Duration(milliseconds: 1000),
                       curve: Curves.easeInOut,
                       child: Card(
-                        color: Colors.white,
+                        color: isDark ? const Color(0xFF2C2C2E) : Colors.white,
                         margin: const EdgeInsets.symmetric(vertical: 8),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -136,24 +138,27 @@ class CBEPage extends StatelessWidget {
                                   backgroundImage: NetworkImage(profilePic),
                                   radius: 25,
                                 )
-                              : const CircleAvatar(
+                              : CircleAvatar(
                                   radius: 25,
-                                  backgroundColor:
-                                      Color.fromARGB(255, 61, 38, 3),
-                                  child:
-                                      Icon(Icons.person, color: Colors.white),
+                                  backgroundColor: isDark
+                                      ? const Color(0xFFB5731A)
+                                      : const Color.fromARGB(255, 61, 38, 3),
+                                  child: const Icon(Icons.person,
+                                      color: Colors.white),
                                 ),
                           title: Text(
                             "$firstName $lastName",
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
-                              color: Colors.black87,
+                              color: isDark ? Colors.white : Colors.black87,
                             ),
                           ),
                           subtitle: Text(
                             course,
-                            style: const TextStyle(color: Colors.black54),
+                            style: TextStyle(
+                              color: isDark ? Colors.white70 : Colors.black54,
+                            ),
                           ),
                         ),
                       ),

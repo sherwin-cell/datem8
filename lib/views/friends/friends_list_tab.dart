@@ -41,7 +41,9 @@ class FriendsListTab extends StatelessWidget {
                   trailing: Text(
                     isMutual ? "Friend" : "Pending",
                     style: TextStyle(
-                      color: isMutual ? Colors.green : Colors.orange,
+                      color: isMutual
+                          ? const Color.fromARGB(255, 239, 237, 239)
+                          : Colors.orange,
                     ),
                   ),
                 );

@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:datem8/views/profile/edit_profile.dart';
 import 'package:datem8/services/cloudinary_service.dart';
+import 'package:datem8/widgets/darkmode.dart';
 
 class SettingsIconButton extends StatelessWidget {
   final CloudinaryService cloudinaryService;
@@ -51,9 +52,8 @@ class SettingsIconButton extends StatelessWidget {
         content: const Text('Are you sure you want to log out?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(_, false),
-            child: const Text('Cancel'),
-          ),
+              onPressed: () => Navigator.pop(_, false),
+              child: const Text('Cancel')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(_, true),
@@ -152,8 +152,8 @@ class SettingsIconButton extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: ListTile(
-                leading:
-                    const Icon(Icons.email_outlined, color: Colors.deepPurple),
+                leading: Image.asset('assets/icons/envelope.png',
+                    width: 20, height: 20),
                 title: Text(email,
                     style: const TextStyle(
                         fontSize: 16, fontWeight: FontWeight.w500)),
@@ -162,8 +162,8 @@ class SettingsIconButton extends StatelessWidget {
             const SizedBox(height: 12),
             const Divider(),
             ListTile(
-              leading: Image.asset('assets/icons/user-account.png',
-                  width: 24, height: 24),
+              leading:
+                  Image.asset('assets/icons/draw.png', width: 20, height: 20),
               title: const Text('Edit Profile'),
               onTap: () {
                 Navigator.pop(_);
@@ -178,7 +178,7 @@ class SettingsIconButton extends StatelessWidget {
             ),
             ListTile(
               leading:
-                  Image.asset('assets/icons/shield.png', width: 24, height: 24),
+                  Image.asset('assets/icons/shield.png', width: 20, height: 20),
               title: const Text('Change Password'),
               onTap: () async {
                 Navigator.pop(_);
@@ -187,7 +187,7 @@ class SettingsIconButton extends StatelessWidget {
             ),
             ListTile(
               leading:
-                  Image.asset('assets/icons/exit.png', width: 24, height: 24),
+                  Image.asset('assets/icons/delete.png', width: 20, height: 20),
               title: const Text('Delete Account',
                   style: TextStyle(color: Colors.red)),
               onTap: () => _deleteAccount(context),
@@ -205,12 +205,8 @@ class SettingsIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
-      icon: Image.asset(
-        'assets/icons/menu.png',
-        width: 20,
-        height: 20,
-        color: Colors.black87,
-      ),
+      icon: Image.asset('assets/icons/menu.png',
+          width: 20, height: 20, color: Colors.black87),
       onSelected: (value) {
         switch (value) {
           case 'account':
@@ -225,7 +221,8 @@ class SettingsIconButton extends StatelessWidget {
                 title: const Text('About DateM8 ❤️'),
                 content: const Text(
                   "DateM8 is a modern matchmaking app designed to help students connect "
-                  "with like-minded individuals based on their department, interests, and goals.\n\nVersion: 1.0.0\nDeveloped by Team DateM8 💜",
+                  "with like-minded individuals based on their department, interests, and goals.\n\n"
+                  "Version: 1.0.0\nDeveloped by Team DateM8 💜",
                 ),
                 actions: [
                   TextButton(
@@ -317,14 +314,47 @@ class SettingsIconButton extends StatelessWidget {
         PopupMenuItem(
           value: 'contact',
           child: ListTile(
-            leading: Image.asset('assets/icons/customer-support.png',
-                color: const Color.fromARGB(255, 188, 13, 204),
-                width: 20,
-                height: 20),
+            leading: Image.asset(
+              'assets/icons/customer-support.png',
+              color: const Color.fromARGB(255, 188, 13, 204),
+              width: 20,
+              height: 20,
+            ),
             title: const Text('Contact Support'),
           ),
         ),
         const PopupMenuDivider(),
+
+        // **Dark Mode Toggle with Switch**
+        PopupMenuItem(
+          value: 'darkmode',
+          child: ValueListenableBuilder<ThemeMode>(
+            valueListenable: DarkModeController.themeModeNotifier,
+            builder: (context, themeMode, _) {
+              final isDark = themeMode == ThemeMode.dark;
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.wb_sunny,
+                      color: isDark ? Colors.grey : Colors.orange),
+                  Switch(
+                    value: isDark,
+                    onChanged: (_) {
+                      DarkModeController.toggleTheme();
+                      Navigator.pop(
+                          context); // 👈 Close menu to rebuild it next time
+                    },
+                  ),
+                  Icon(Icons.dark_mode,
+                      color: isDark ? Colors.blue : Colors.grey),
+                ],
+              );
+            },
+          ),
+        ),
+
+        const PopupMenuDivider(),
+
         PopupMenuItem(
           value: 'logout',
           child: ListTile(

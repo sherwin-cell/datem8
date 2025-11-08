@@ -6,8 +6,11 @@ class CCSPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
           // 🔹 AppBar with Hero image + gradient overlay
@@ -18,7 +21,7 @@ class CCSPage extends StatelessWidget {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // 🔹 Hero department image (with same animation as CBE)
+                  // 🔹 Hero department image
                   Hero(
                     tag: "CCS",
                     child: Image.asset(
@@ -27,14 +30,14 @@ class CCSPage extends StatelessWidget {
                     ),
                   ),
 
-                  // 🔹 Gradient overlay for visual clarity
+                  // 🔹 Gradient overlay for clarity
                   Container(
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          Color(0x99000000),
-                          Color(0x00000000),
-                          Color(0xCC1976D2),
+                          Colors.black.withOpacity(0.6),
+                          Colors.transparent,
+                          const Color(0xCC1976D2),
                         ],
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
@@ -57,6 +60,14 @@ class CCSPage extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              Text(
+                                "College of Computer Studies",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                               SizedBox(height: 4),
                               Text(
                                 "Meet our CCS students below 👇",
@@ -123,7 +134,7 @@ class CCSPage extends StatelessWidget {
                       duration: const Duration(milliseconds: 1000),
                       curve: Curves.easeInOut,
                       child: Card(
-                        color: Colors.white,
+                        color: isDark ? const Color(0xFF2C2C2E) : Colors.white,
                         margin: const EdgeInsets.symmetric(vertical: 8),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -137,23 +148,27 @@ class CCSPage extends StatelessWidget {
                                   backgroundImage: NetworkImage(profilePic),
                                   radius: 25,
                                 )
-                              : const CircleAvatar(
+                              : CircleAvatar(
                                   radius: 25,
-                                  backgroundColor: Color(0xFF64B5F6),
-                                  child:
-                                      Icon(Icons.person, color: Colors.white),
+                                  backgroundColor: isDark
+                                      ? const Color(0xFF64B5F6)
+                                      : const Color(0xFF90CAF9),
+                                  child: const Icon(Icons.person,
+                                      color: Colors.white),
                                 ),
                           title: Text(
                             "$firstName $lastName",
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
-                              color: Colors.black87,
+                              color: isDark ? Colors.white : Colors.black87,
                             ),
                           ),
                           subtitle: Text(
                             course,
-                            style: const TextStyle(color: Colors.black54),
+                            style: TextStyle(
+                              color: isDark ? Colors.white70 : Colors.black54,
+                            ),
                           ),
                         ),
                       ),

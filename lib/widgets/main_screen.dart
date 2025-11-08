@@ -31,22 +31,32 @@ class _MainScreenState extends State<MainScreen> {
     ];
   }
 
-  Widget _buildNavItem(String asset, int index) {
+  Widget _buildNavItem({
+    required String asset,
+    required int index,
+    double size = 24,
+  }) {
+    final bool isSelected = _currentIndex == index;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return GestureDetector(
       onTap: () => setState(() => _currentIndex = index),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
         decoration: BoxDecoration(
-          color: _currentIndex == index
-              ? Colors.blue.shade100
+          color: isSelected
+              ? (isDark ? Colors.purple.shade900 : Colors.purple.shade100)
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(30), // pill shape
+          borderRadius: BorderRadius.circular(30),
         ),
         child: Image.asset(
           asset,
-          width: 24,
-          height: 24,
-          color: _currentIndex == index ? Colors.blue : Colors.grey,
+          width: size,
+          height: size,
+          color: isSelected
+              ? Colors.purple
+              : (isDark ? Colors.grey.shade400 : Colors.grey),
         ),
       ),
     );
@@ -54,6 +64,9 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     if (_currentUser == null) {
       return const Scaffold(
         body: Center(child: Text("No user logged in")),
@@ -82,52 +95,61 @@ class _MainScreenState extends State<MainScreen> {
         final pages = _buildPages();
 
         return Scaffold(
+          backgroundColor: theme.scaffoldBackgroundColor,
           body: SafeArea(child: pages[_currentIndex]),
           bottomNavigationBar: Padding(
             padding: const EdgeInsets.all(12.0),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDark ? Colors.grey.shade900 : Colors.white,
                 borderRadius: BorderRadius.circular(40),
                 boxShadow: [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 10,
-                  ),
+                  if (!isDark)
+                    const BoxShadow(color: Colors.black12, blurRadius: 10),
                 ],
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildNavItem('assets/icons/home.png', 0),
-                  _buildNavItem('assets/icons/chat.png', 1),
-                  _buildNavItem('assets/icons/explore.png', 2),
-                  _buildNavItem('assets/icons/friends.png', 3),
+                  _buildNavItem(
+                      asset: 'assets/icons/home.png', index: 0, size: 22),
+                  _buildNavItem(
+                      asset: 'assets/icons/chat.png', index: 1, size: 22),
+                  _buildNavItem(
+                      asset: 'assets/icons/explore.png', index: 2, size: 26),
+                  _buildNavItem(
+                      asset: 'assets/icons/friends.png', index: 3, size: 22),
                   GestureDetector(
                     onTap: () => setState(() => _currentIndex = 4),
                     child: Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
                         color: _currentIndex == 4
-                            ? Colors.blue.shade100
+                            ? (isDark
+                                ? Colors.purple.shade900
+                                : Colors.purple.shade100)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(30),
                       ),
                       child: profileImage != null
                           ? CircleAvatar(
                               key: ValueKey(profileImage),
-                              radius: 14,
+                              radius: 16,
                               backgroundImage: NetworkImage(profileImage),
                               backgroundColor: Colors.transparent,
                             )
-                          : Image.asset(
-                              'assets/icons/profile.png',
-                              width: 24,
-                              height: 24,
-                              color: _currentIndex == 4
-                                  ? Colors.blue
-                                  : Colors.grey,
+                          : CircleAvatar(
+                              radius: 16,
+                              backgroundColor: isDark
+                                  ? Colors.grey.shade800
+                                  : Colors.grey.shade200,
+                              child: Icon(
+                                Icons.person,
+                                size: 16,
+                                color:
+                                    isDark ? Colors.grey.shade300 : Colors.grey,
+                              ),
                             ),
                     ),
                   ),

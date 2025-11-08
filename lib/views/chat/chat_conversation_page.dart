@@ -58,7 +58,6 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   }
 
   // ---------------- Messaging ----------------
-
   Future<void> _sendMessage({List<String>? imageUrls}) async {
     if (_isBlocked) return;
 
@@ -122,7 +121,6 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   }
 
   // ---------------- Scrolling ----------------
-
   void _scrollToBottom({bool animated = true}) {
     if (!_scrollController.hasClients) return;
     final offset = _scrollController.position.minScrollExtent;
@@ -139,7 +137,6 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   }
 
   // ---------------- Messages Stream ----------------
-
   Stream<List<Map<String, dynamic>>> _messagesStream() {
     final chatRef = _dbRef.child('chats/${widget.chatId}');
 
@@ -168,7 +165,6 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   }
 
   // ---------------- Call Handling ----------------
-
   void _startCall({required bool isVideo}) async {
     if (_isBlocked) return;
 
@@ -190,7 +186,6 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   }
 
   // ---------------- Helpers ----------------
-
   String _formatTime(int? timestamp) {
     if (timestamp == null) return "";
     return DateFormat('hh:mm a')
@@ -225,7 +220,6 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   }
 
   // ---------------- Image Upload ----------------
-
   Future<void> _pickImages() async {
     if (_isBlocked) return;
 
@@ -256,11 +250,13 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   }
 
   // ---------------- UI ----------------
-
   @override
   Widget build(BuildContext context) {
+    //nal theme = Theme.of(context);
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(
+        backgroundColor: Colors.grey[900],
         title: Text(widget.otherUserName),
         actions: [
           IconButton(
@@ -283,6 +279,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
 
   Widget _buildPopupMenu() {
     return PopupMenuButton<String>(
+      color: Colors.grey[850],
       onSelected: (value) async {
         if (value == 'delete') {
           await _chatActions.deleteConversation(
@@ -311,10 +308,13 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       },
       itemBuilder: (context) => [
         const PopupMenuItem(
-            value: 'delete', child: Text('Delete Conversation')),
+            value: 'delete',
+            child: Text('Delete Conversation',
+                style: TextStyle(color: Colors.white))),
         PopupMenuItem(
             value: 'block',
-            child: Text(_isBlocked ? 'Unblock User' : 'Block User')),
+            child: Text(_isBlocked ? 'Unblock User' : 'Block User',
+                style: const TextStyle(color: Colors.white))),
       ],
     );
   }
@@ -324,11 +324,14 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       stream: _messagesStream(),
       builder: (context, snapshot) {
         if (!snapshot.hasData)
-          return const Center(child: CircularProgressIndicator());
+          return const Center(
+              child: CircularProgressIndicator(color: Colors.white));
 
         final messages = snapshot.data!;
         if (messages.isEmpty)
-          return const Center(child: Text("No messages yet."));
+          return const Center(
+              child: Text("No messages yet.",
+                  style: TextStyle(color: Colors.white70)));
 
         final groupedMessages = _groupMessages(messages);
         WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
@@ -349,8 +352,8 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                   padding: const EdgeInsets.symmetric(vertical: 6),
                   child: Center(
                     child: Text(_formatTime(group[0]['timestamp']),
-                        style:
-                            const TextStyle(fontSize: 12, color: Colors.grey)),
+                        style: const TextStyle(
+                            fontSize: 12, color: Colors.white54)),
                   ),
                 ),
                 ...group.map((msg) => _buildMessageTile(msg, isMe)),
@@ -369,20 +372,27 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
 
     if (type == 'call') return _buildCallTile(msg, isMe);
 
+    final bgColor = isMe ? Colors.blueGrey[800] : Colors.grey[850];
+    final textColor = Colors.white;
+
     return GestureDetector(
       onLongPress: isMe
           ? () async {
               final confirm = await showDialog<bool>(
                 context: context,
                 builder: (_) => AlertDialog(
-                  title: const Text('Unsend Message?'),
+                  backgroundColor: Colors.grey[900],
+                  title: const Text('Unsend Message?',
+                      style: TextStyle(color: Colors.white)),
                   actions: [
                     TextButton(
                         onPressed: () => Navigator.pop(context, false),
-                        child: const Text('Cancel')),
+                        child: const Text('Cancel',
+                            style: TextStyle(color: Colors.white))),
                     TextButton(
                         onPressed: () => Navigator.pop(context, true),
-                        child: const Text('Unsend')),
+                        child: const Text('Unsend',
+                            style: TextStyle(color: Colors.white))),
                   ],
                 ),
               );
@@ -405,10 +415,11 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
-                  color: isMe ? Colors.blue.shade50 : Colors.grey.shade100,
+                  color: bgColor,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text(text, style: const TextStyle(fontSize: 16)),
+                child: Text(text,
+                    style: TextStyle(fontSize: 16, color: textColor)),
               ),
             if (imageUrls.isNotEmpty)
               Column(
@@ -436,6 +447,9 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     final duration = msg['duration'] ?? 0;
     final isMissed = msg['missed'] ?? false;
 
+    final bgColor = isMe ? Colors.blueGrey[800] : Colors.grey[850];
+    final textColor = Colors.white;
+
     return GestureDetector(
       onTap: () => _startCall(isVideo: isVideo),
       child: Container(
@@ -443,7 +457,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
             left: isMe ? 50 : 10, right: isMe ? 10 : 50, top: 4, bottom: 4),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isMe ? Colors.blue.shade50 : Colors.grey.shade200,
+          color: bgColor,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
@@ -453,14 +467,16 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
               isVideo
                   ? (isMissed ? "Missed Video Call" : "Video Call")
                   : (isMissed ? "Missed Voice Call" : "Voice Call"),
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: TextStyle(fontWeight: FontWeight.bold, color: textColor),
             ),
             if (!isMissed) ...[
               const SizedBox(height: 4),
-              Text(_formatDuration(duration)),
+              Text(_formatDuration(duration),
+                  style: TextStyle(color: textColor)),
             ],
             const SizedBox(height: 4),
-            const Text("Call Again", style: TextStyle(color: Colors.blue)),
+            const Text("Call Again",
+                style: TextStyle(color: Colors.blueAccent)),
           ],
         ),
       ),
@@ -470,28 +486,30 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   Widget _buildMessageInput() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      color: Colors.white,
+      color: Colors.grey[900],
       child: Row(
         children: [
           IconButton(
-              icon: const Icon(Icons.photo_outlined),
+              icon: const Icon(Icons.photo_outlined, color: Colors.white),
               onPressed: _isBlocked ? null : _pickImages),
           IconButton(
-              icon: const Icon(Icons.camera_alt_outlined),
+              icon: const Icon(Icons.camera_alt_outlined, color: Colors.white),
               onPressed: _isBlocked ? null : _takePhoto),
           Expanded(
             child: TextField(
               controller: _messageController,
               textCapitalization: TextCapitalization.sentences,
               enabled: !_isBlocked,
+              style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: _isBlocked
                     ? "You have blocked this user"
                     : "Type a message...",
+                hintStyle: TextStyle(color: Colors.white54),
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(25),
                     borderSide: BorderSide.none),
-                fillColor: Colors.grey.shade200,
+                fillColor: Colors.grey[800],
                 filled: true,
                 contentPadding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
