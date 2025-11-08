@@ -47,10 +47,13 @@ class _FriendsPageState extends State<FriendsPage>
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
+        automaticallyImplyLeading: false, // ← removes the back button
         title: const Text(
           "Friends",
-          style:
-              TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF342F2F)),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF342F2F),
+          ),
         ),
         backgroundColor: Colors.white,
         elevation: 2,

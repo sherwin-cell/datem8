@@ -25,7 +25,6 @@ class SettingsIconButton extends StatelessWidget {
       _showSnackBar(context, "No email associated with this account.");
       return;
     }
-
     try {
       await FirebaseAuth.instance.sendPasswordResetEmail(email: user!.email!);
       _showSnackBar(context, "Password reset email sent! Check your inbox.");
@@ -52,8 +51,9 @@ class SettingsIconButton extends StatelessWidget {
         content: const Text('Are you sure you want to log out?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(_, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(_, false),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(_, true),
@@ -74,7 +74,6 @@ class SettingsIconButton extends StatelessWidget {
     final user = FirebaseAuth.instance.currentUser;
     if (user?.email == null) return;
 
-    // Step 1: Confirm deletion
     final confirmDelete = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -97,7 +96,6 @@ class SettingsIconButton extends StatelessWidget {
 
     if (confirmDelete != true) return;
 
-    // Step 2: Re-authenticate
     final password = await showDialog<String>(
       context: context,
       builder: (_) {
@@ -128,7 +126,6 @@ class SettingsIconButton extends StatelessWidget {
           EmailAuthProvider.credential(email: user!.email!, password: password);
       await user.reauthenticateWithCredential(credential);
       await user.delete();
-
       if (!context.mounted) return;
       Navigator.of(context).pushNamedAndRemoveUntil('/welcome', (_) => false);
     } on FirebaseAuthException catch (e) {
@@ -136,7 +133,6 @@ class SettingsIconButton extends StatelessWidget {
     }
   }
 
-  // 🆕 ACCOUNT DIALOG (with email added)
   Future<void> _showAccountDialog(BuildContext context) async {
     final user = FirebaseAuth.instance.currentUser;
     final email = user?.email ?? "No email found";
@@ -149,7 +145,6 @@ class SettingsIconButton extends StatelessWidget {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Display user's email address
             Container(
               padding: const EdgeInsets.symmetric(vertical: 8),
               decoration: BoxDecoration(
@@ -159,17 +154,16 @@ class SettingsIconButton extends StatelessWidget {
               child: ListTile(
                 leading:
                     const Icon(Icons.email_outlined, color: Colors.deepPurple),
-                title: Text(
-                  email,
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w500),
-                ),
+                title: Text(email,
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w500)),
               ),
             ),
             const SizedBox(height: 12),
             const Divider(),
             ListTile(
-              leading: const Icon(Icons.person_outline),
+              leading: Image.asset('assets/icons/user-account.png',
+                  width: 24, height: 24),
               title: const Text('Edit Profile'),
               onTap: () {
                 Navigator.pop(_);
@@ -177,15 +171,14 @@ class SettingsIconButton extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder: (_) => EditProfilePage(
-                      cloudinaryService: cloudinaryService,
-                      userId: userId,
-                    ),
+                        cloudinaryService: cloudinaryService, userId: userId),
                   ),
                 );
               },
             ),
             ListTile(
-              leading: const Icon(Icons.lock_reset_outlined),
+              leading:
+                  Image.asset('assets/icons/shield.png', width: 24, height: 24),
               title: const Text('Change Password'),
               onTap: () async {
                 Navigator.pop(_);
@@ -193,7 +186,8 @@ class SettingsIconButton extends StatelessWidget {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.delete_outline, color: Colors.red),
+              leading:
+                  Image.asset('assets/icons/exit.png', width: 24, height: 24),
               title: const Text('Delete Account',
                   style: TextStyle(color: Colors.red)),
               onTap: () => _deleteAccount(context),
@@ -202,7 +196,7 @@ class SettingsIconButton extends StatelessWidget {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(_), child: const Text('Close')),
+              onPressed: () => Navigator.pop(_), child: const Text('Close'))
         ],
       ),
     );
@@ -211,7 +205,12 @@ class SettingsIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
-      icon: const Icon(Icons.settings, color: Colors.black),
+      icon: Image.asset(
+        'assets/icons/menu.png',
+        width: 20,
+        height: 20,
+        color: Colors.black87,
+      ),
       onSelected: (value) {
         switch (value) {
           case 'account':
@@ -283,38 +282,56 @@ class SettingsIconButton extends StatelessWidget {
         }
       },
       itemBuilder: (context) => [
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'account',
-          child: ListTile(leading: Icon(Icons.person), title: Text('Account')),
+          child: ListTile(
+            leading: Image.asset('assets/icons/user-account.png',
+                width: 20, height: 20),
+            title: const Text('Account'),
+          ),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'about',
-          child:
-              ListTile(leading: Icon(Icons.info_outline), title: Text("About")),
+          child: ListTile(
+            leading:
+                Image.asset('assets/icons/info.png', width: 20, height: 20),
+            title: const Text('About'),
+          ),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'terms',
           child: ListTile(
-              leading: Icon(Icons.description_outlined),
-              title: Text("Terms of Service")),
+            leading: Image.asset('assets/icons/terms-of-use.png',
+                width: 20, height: 20),
+            title: const Text('Terms of Service'),
+          ),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'privacy',
           child: ListTile(
-              leading: Icon(Icons.lock_outline), title: Text("Privacy Policy")),
+            leading:
+                Image.asset('assets/icons/shield.png', width: 20, height: 20),
+            title: const Text('Privacy Policy'),
+          ),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'contact',
           child: ListTile(
-              leading: Icon(Icons.email_outlined),
-              title: Text("Contact Support")),
+            leading: Image.asset('assets/icons/customer-support.png',
+                color: const Color.fromARGB(255, 188, 13, 204),
+                width: 20,
+                height: 20),
+            title: const Text('Contact Support'),
+          ),
         ),
         const PopupMenuDivider(),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'logout',
           child: ListTile(
-              leading: Icon(Icons.logout, color: Colors.red),
-              title: Text("Logout", style: TextStyle(color: Colors.red))),
+            leading:
+                Image.asset('assets/icons/exit.png', width: 20, height: 20),
+            title: const Text('Logout', style: TextStyle(color: Colors.red)),
+          ),
         ),
       ],
     );

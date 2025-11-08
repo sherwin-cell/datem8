@@ -140,7 +140,6 @@ class _ExplorePageState extends State<ExplorePage> {
           builder: (context, snapshot) {
             if (!snapshot.hasData)
               return const Center(child: CircularProgressIndicator());
-
             final posts = snapshot.data!.docs;
 
             return ListView.builder(
@@ -184,7 +183,7 @@ class _ExplorePageState extends State<ExplorePage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // 🧍 User Info
+                          // User Info
                           ListTile(
                             contentPadding:
                                 const EdgeInsets.symmetric(horizontal: 14),
@@ -209,12 +208,12 @@ class _ExplorePageState extends State<ExplorePage> {
                                       fontSize: 15)),
                             ),
                             subtitle: Text(
-                                DateFormat.yMMMd().add_jm().format(createdAt),
-                                style: const TextStyle(
-                                    color: Colors.grey, fontSize: 12)),
+                              DateFormat.yMMMd().add_jm().format(createdAt),
+                              style: const TextStyle(
+                                  color: Colors.grey, fontSize: 12),
+                            ),
                           ),
-
-                          // 🖼️ Images
+                          // Post Images
                           if (images.isNotEmpty)
                             Column(
                               children: [
@@ -222,10 +221,8 @@ class _ExplorePageState extends State<ExplorePage> {
                                   height: 260,
                                   child: PageView.builder(
                                     itemCount: images.length,
-                                    onPageChanged: (page) {
-                                      setState(() =>
-                                          _currentPages[postDoc.id] = page);
-                                    },
+                                    onPageChanged: (page) => setState(
+                                        () => _currentPages[postDoc.id] = page),
                                     itemBuilder: (context, i) => Image.network(
                                       images[i],
                                       fit: BoxFit.cover,
@@ -262,8 +259,7 @@ class _ExplorePageState extends State<ExplorePage> {
                                   ),
                               ],
                             ),
-
-                          // ✍️ Caption
+                          // Caption
                           if (caption.isNotEmpty)
                             Padding(
                               padding: const EdgeInsets.symmetric(
@@ -272,8 +268,7 @@ class _ExplorePageState extends State<ExplorePage> {
                                   style: const TextStyle(
                                       fontSize: 15, height: 1.5)),
                             ),
-
-                          // 💬 Reactions & Comments
+                          // Reactions & Comments
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 14),
                             child: StreamBuilder<DocumentSnapshot>(
@@ -300,7 +295,6 @@ class _ExplorePageState extends State<ExplorePage> {
                                   builder: (context, commentSnap) {
                                     final commentCount =
                                         commentSnap.data?.docs.length ?? 0;
-
                                     return Padding(
                                       padding:
                                           const EdgeInsets.only(bottom: 12),
@@ -318,29 +312,30 @@ class _ExplorePageState extends State<ExplorePage> {
                                                     postDoc.id, emoji);
                                             },
                                             child: Text(
-                                                userReaction.isNotEmpty
-                                                    ? userReaction
-                                                    : '❤️',
-                                                style:
-                                                    GoogleFonts.notoColorEmoji(
-                                                        fontSize: 22)),
+                                              userReaction.isNotEmpty
+                                                  ? userReaction
+                                                  : '❤️',
+                                              style: GoogleFonts.notoColorEmoji(
+                                                  fontSize: 22),
+                                            ),
                                           ),
                                           const SizedBox(width: 6),
                                           if (counts.isNotEmpty)
                                             Row(
                                               children: counts.entries
-                                                  .map((e) => Padding(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .symmetric(
-                                                                horizontal: 3),
-                                                        child: Text(
-                                                            "${e.key}${e.value}",
-                                                            style: GoogleFonts
-                                                                .notoColorEmoji(
-                                                                    fontSize:
-                                                                        18)),
-                                                      ))
+                                                  .map(
+                                                    (e) => Padding(
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
+                                                          horizontal: 3),
+                                                      child: Text(
+                                                          "${e.key}${e.value}",
+                                                          style: GoogleFonts
+                                                              .notoColorEmoji(
+                                                                  fontSize:
+                                                                      18)),
+                                                    ),
+                                                  )
                                                   .toList(),
                                             ),
                                           const Spacer(),
@@ -373,10 +368,19 @@ class _ExplorePageState extends State<ExplorePage> {
           },
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _openNewPost,
-        backgroundColor: const Color(0xFF6A6969),
-        child: const Icon(Icons.add),
+      floatingActionButton: GestureDetector(
+        onTap: _openNewPost,
+        child: SizedBox(
+          width: 60,
+          height: 60,
+          child: Center(
+            child: Image.asset(
+              'assets/icons/heart.png',
+              width: 32,
+              height: 32,
+            ),
+          ),
+        ),
       ),
     );
   }

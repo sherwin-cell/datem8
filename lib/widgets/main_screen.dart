@@ -7,7 +7,6 @@ import 'package:datem8/views/friends/friends_page.dart';
 import 'package:datem8/views/profile/profile_page.dart';
 import 'package:datem8/views/explore/explore_page.dart';
 import 'package:datem8/views/chat/chat_page.dart';
-import 'package:datem8/helper/app.icons.dart';
 
 class MainScreen extends StatefulWidget {
   final CloudinaryService cloudinaryService;
@@ -20,7 +19,6 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
-
   late final User? _currentUser = FirebaseAuth.instance.currentUser;
 
   List<Widget> _buildPages() {
@@ -31,6 +29,27 @@ class _MainScreenState extends State<MainScreen> {
       FriendsPage(cloudinaryService: widget.cloudinaryService),
       ProfilePage(cloudinaryService: widget.cloudinaryService),
     ];
+  }
+
+  Widget _buildNavItem(String asset, int index) {
+    return GestureDetector(
+      onTap: () => setState(() => _currentIndex = index),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        decoration: BoxDecoration(
+          color: _currentIndex == index
+              ? Colors.blue.shade100
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(30), // pill shape
+        ),
+        child: Image.asset(
+          asset,
+          width: 24,
+          height: 24,
+          color: _currentIndex == index ? Colors.blue : Colors.grey,
+        ),
+      ),
+    );
   }
 
   @override
@@ -64,43 +83,57 @@ class _MainScreenState extends State<MainScreen> {
 
         return Scaffold(
           body: SafeArea(child: pages[_currentIndex]),
-          bottomNavigationBar: BottomNavigationBar(
-            currentIndex: _currentIndex,
-            type: BottomNavigationBarType.fixed,
-            selectedItemColor: Colors.blue,
-            unselectedItemColor: Colors.grey,
-            showSelectedLabels: false,
-            showUnselectedLabels: false,
-            onTap: (index) => setState(() => _currentIndex = index),
-            items: [
-              const BottomNavigationBarItem(
-                  icon: Icon(AppIcons.home), label: ''),
-              const BottomNavigationBarItem(
-                  icon: Icon(AppIcons.chat), label: ''),
-              const BottomNavigationBarItem(
-                  icon: Icon(AppIcons.explore), label: ''),
-              const BottomNavigationBarItem(
-                  icon: Icon(AppIcons.friends), label: ''),
-              BottomNavigationBarItem(
-                icon: profileImage != null
-                    ? CircleAvatar(
-                        key: ValueKey(profileImage),
-                        radius: 12,
-                        backgroundImage: NetworkImage(profileImage),
-                        backgroundColor: Colors.transparent,
-                      )
-                    : CircleAvatar(
-                        radius: 12,
-                        backgroundColor: Colors.grey[300],
-                        child: const Icon(
-                          Icons.person,
-                          size: 16,
-                          color: Colors.white,
-                        ),
-                      ),
-                label: '',
+          bottomNavigationBar: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(40),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 10,
+                  ),
+                ],
               ),
-            ],
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildNavItem('assets/icons/home.png', 0),
+                  _buildNavItem('assets/icons/chat.png', 1),
+                  _buildNavItem('assets/icons/explore.png', 2),
+                  _buildNavItem('assets/icons/friends.png', 3),
+                  GestureDetector(
+                    onTap: () => setState(() => _currentIndex = 4),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: _currentIndex == 4
+                            ? Colors.blue.shade100
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      child: profileImage != null
+                          ? CircleAvatar(
+                              key: ValueKey(profileImage),
+                              radius: 14,
+                              backgroundImage: NetworkImage(profileImage),
+                              backgroundColor: Colors.transparent,
+                            )
+                          : Image.asset(
+                              'assets/icons/profile.png',
+                              width: 24,
+                              height: 24,
+                              color: _currentIndex == 4
+                                  ? Colors.blue
+                                  : Colors.grey,
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         );
       },

@@ -325,7 +325,6 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     ),
                   ),
-                  // ✅ Simple clean dots
                   if (imageUrls.length > 1)
                     Positioned(
                       bottom: 10,
@@ -380,6 +379,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false, // ← removes the back button
         title: const Text("Profile"),
         actions: [
           if (currentUser != null)

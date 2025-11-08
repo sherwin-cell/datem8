@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:datem8/services/cloudinary_service.dart';
 import 'package:datem8/widgets/profile_modal.dart';
+import 'package:datem8/widgets/setting_widget.dart';
 
 // Department pages
 import 'package:datem8/views/home/cbe_users.dart';
@@ -37,22 +38,24 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadFriendData() async {
+    if (currentUser == null) return;
+
     final uid = currentUser!.uid;
     final firestore = FirebaseFirestore.instance;
 
-    // Friends list
+    // Load friends
     final friendSnap =
         await firestore.collection('friends').doc(uid).collection('list').get();
     _friends.addAll(friendSnap.docs.map((e) => e.id));
 
-    // Sent friend requests
+    // Sent requests
     final sentSnap = await firestore
         .collection('friend_requests')
         .where('from', isEqualTo: uid)
         .get();
     _sentRequests.addAll(sentSnap.docs.map((e) => e['to'] as String));
 
-    // Received friend requests
+    // Received requests
     final recvSnap = await firestore
         .collection('friend_requests')
         .where('to', isEqualTo: uid)
@@ -63,7 +66,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _openDepartmentPage(String dept) {
-    Widget? page;
+    late Widget page;
     switch (dept) {
       case "CBE":
         page = const CBEPage();
@@ -74,14 +77,11 @@ class _HomePageState extends State<HomePage> {
       case "CTE":
         page = const CTEPage();
         break;
+      default:
+        return; // If department is unknown, do nothing
     }
 
-    if (page != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => page!),
-      );
-    }
+    Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
 
   @override
@@ -91,6 +91,7 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 2,
+        automaticallyImplyLeading: false, // ← removes the back button
         title: StreamBuilder<DocumentSnapshot>(
           stream: FirebaseFirestore.instance
               .collection('users')
@@ -112,9 +113,7 @@ class _HomePageState extends State<HomePage> {
               final profilePic = userData?['profilePic'] ?? '';
               if (profilePic.isNotEmpty) {
                 avatar = CircleAvatar(
-                  radius: 18,
-                  backgroundImage: NetworkImage(profilePic),
-                );
+                    radius: 18, backgroundImage: NetworkImage(profilePic));
               }
             }
 
@@ -122,18 +121,27 @@ class _HomePageState extends State<HomePage> {
               children: [
                 avatar,
                 const SizedBox(width: 10),
-                Text(
-                  greeting,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: Colors.deepPurple,
+                Expanded(
+                  child: Text(
+                    greeting,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Colors.deepPurple,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             );
           },
         ),
+        actions: [
+          SettingsIconButton(
+            cloudinaryService: widget.cloudinaryService,
+            userId: currentUser!.uid,
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: _loadFriendData,
@@ -143,7 +151,7 @@ class _HomePageState extends State<HomePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 🔹 Department section
+              // Departments
               const Text(
                 "Departments",
                 style: TextStyle(
@@ -178,16 +186,12 @@ class _HomePageState extends State<HomePage> {
                               height: 160,
                               decoration: const BoxDecoration(
                                 gradient: LinearGradient(
-                                  colors: [
-                                    Colors.transparent,
-                                    Colors.black26,
-                                  ],
+                                  colors: [Colors.transparent, Colors.black26],
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
                                 ),
                               ),
                             ),
-                            // 🔻 Removed the Text label here
                           ],
                         ),
                       ),
@@ -195,9 +199,9 @@ class _HomePageState extends State<HomePage> {
                   },
                 ),
               ),
-
-              // 🔹 People You May Know section
               const SizedBox(height: 25),
+
+              // People You May Know
               const Text(
                 "People You May Know",
                 style: TextStyle(
@@ -220,11 +224,10 @@ class _HomePageState extends State<HomePage> {
 
                   final users = snapshot.data!.docs.where((doc) {
                     final id = doc.id;
-                    if (id == currentUser!.uid) return false;
-                    if (_friends.contains(id)) return false;
-                    if (_sentRequests.contains(id)) return false;
-                    if (_receivedRequests.contains(id)) return false;
-                    return true;
+                    return id != currentUser!.uid &&
+                        !_friends.contains(id) &&
+                        !_sentRequests.contains(id) &&
+                        !_receivedRequests.contains(id);
                   }).toList();
 
                   if (users.isEmpty) {
@@ -250,8 +253,7 @@ class _HomePageState extends State<HomePage> {
 
                       return Card(
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                            borderRadius: BorderRadius.circular(12)),
                         elevation: 2,
                         child: ListTile(
                           leading: CircleAvatar(
@@ -263,10 +265,9 @@ class _HomePageState extends State<HomePage> {
                                 ? const Icon(Icons.person, color: Colors.white)
                                 : null,
                           ),
-                          title: Text(
-                            name,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
+                          title: Text(name,
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold)),
                           subtitle: Text(course),
                           onTap: () => showProfileModal(
                             context,
