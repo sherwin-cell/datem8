@@ -7,8 +7,8 @@ class AppThemes {
     primarySwatch: Colors.red,
     scaffoldBackgroundColor: const Color(0xFFF5F3F7),
     appBarTheme: const AppBarTheme(
-      backgroundColor: Color(0xFF6A6969),
-      foregroundColor: Colors.white,
+      backgroundColor: Color.fromARGB(255, 228, 220, 220),
+      foregroundColor: Color.fromARGB(255, 24, 23, 23),
     ),
     floatingActionButtonTheme:
         const FloatingActionButtonThemeData(backgroundColor: Colors.red),

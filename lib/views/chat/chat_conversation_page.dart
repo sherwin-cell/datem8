@@ -31,7 +31,6 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   final _scrollController = ScrollController();
   final _dbRef = FirebaseDatabase.instance.ref();
   final _chatActions = ChatActions();
-
   bool _isBlocked = false;
 
   @override
@@ -42,11 +41,12 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
 
   @override
   void dispose() {
-    _scrollController.dispose();
     _messageController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
+  // ================= Block Status =================
   Future<void> _checkBlockStatus() async {
     try {
       final blocked = await _chatActions.isBlocked(
@@ -57,7 +57,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     } catch (_) {}
   }
 
-  // ---------------- Messaging ----------------
+  // ================= Send Messages =================
   Future<void> _sendMessage({List<String>? imageUrls}) async {
     if (_isBlocked) return;
 
@@ -67,12 +67,15 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     final chatRef = _dbRef.child('chats/${widget.chatId}');
     final msgRef = chatRef.child('messages').push();
 
+    final localTimestamp = DateTime.now().millisecondsSinceEpoch;
+
     await msgRef.set({
       'senderId': widget.currentUserId,
       'type': 'text',
       'text': text,
       'imageUrls': imageUrls ?? [],
-      'timestamp': ServerValue.timestamp,
+      'timestamp': ServerValue.timestamp, // server timestamp
+      'localTimestamp': localTimestamp, // local fallback
     });
 
     await chatRef.update({
@@ -89,10 +92,8 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     _scrollToBottom();
   }
 
-  Future<void> _sendCallMessage({
-    required bool isVideo,
-    required int duration,
-  }) async {
+  Future<void> _sendCallMessage(
+      {required bool isVideo, required int duration}) async {
     if (_isBlocked) return;
 
     final chatRef = _dbRef.child('chats/${widget.chatId}');
@@ -120,52 +121,8 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     });
   }
 
-  // ---------------- Scrolling ----------------
-  void _scrollToBottom({bool animated = true}) {
-    if (!_scrollController.hasClients) return;
-    final offset = _scrollController.position.minScrollExtent;
-
-    if (animated) {
-      _scrollController.animateTo(
-        offset,
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-      );
-    } else {
-      _scrollController.jumpTo(offset);
-    }
-  }
-
-  // ---------------- Messages Stream ----------------
-  Stream<List<Map<String, dynamic>>> _messagesStream() {
-    final chatRef = _dbRef.child('chats/${widget.chatId}');
-
-    return chatRef.onValue.map((event) {
-      final chatData = event.snapshot.value as Map<dynamic, dynamic>?;
-
-      if (chatData == null) return [];
-
-      final deletedFor = chatData['deletedFor'] as Map<dynamic, dynamic>? ?? {};
-      if (deletedFor[widget.currentUserId] == true) return [];
-
-      final blockedFor = chatData['blockedFor'] as Map<dynamic, dynamic>? ?? {};
-      if (blockedFor[widget.currentUserId] == true) return [];
-
-      final messagesData = chatData['messages'] as Map<dynamic, dynamic>? ?? {};
-      final messages = messagesData.entries.map((e) {
-        final map = Map<String, dynamic>.from(e.value as Map? ?? {});
-        map['key'] = e.key;
-        return map;
-      }).toList();
-
-      messages
-          .sort((a, b) => (a['timestamp'] ?? 0).compareTo(a['timestamp'] ?? 0));
-      return messages;
-    });
-  }
-
-  // ---------------- Call Handling ----------------
-  void _startCall({required bool isVideo}) async {
+  // ================= Start Call =================
+  Future<void> _startCall({required bool isVideo}) async {
     if (_isBlocked) return;
 
     final duration = await Navigator.push<int>(
@@ -185,19 +142,34 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     }
   }
 
-  // ---------------- Helpers ----------------
-  String _formatTime(int? timestamp) {
-    if (timestamp == null) return "";
-    return DateFormat('hh:mm a')
-        .format(DateTime.fromMillisecondsSinceEpoch(timestamp));
+  // ================= Messages Stream =================
+  Stream<List<Map<String, dynamic>>> _messagesStream() {
+    final messagesRef = _dbRef.child('chats/${widget.chatId}/messages');
+    return messagesRef.onValue.map((event) {
+      final data = event.snapshot.value as Map<dynamic, dynamic>? ?? {};
+      final messages = data.entries.map((e) {
+        final map = Map<String, dynamic>.from(e.value as Map? ?? {});
+        map['key'] = e.key;
+
+        // Ensure timestamp is an int, fallback to 0 if missing
+        if (map['timestamp'] is! int) {
+          map['timestamp'] = 0;
+        }
+        return map;
+      }).toList();
+
+      // Sort messages by timestamp reliably
+      messages.sort((a, b) {
+        final tsA = a['timestamp'] as int;
+        final tsB = b['timestamp'] as int;
+        return tsA.compareTo(tsB);
+      });
+
+      return messages;
+    });
   }
 
-  String _formatDuration(int seconds) {
-    final mins = (seconds ~/ 60).toString().padLeft(2, '0');
-    final secs = (seconds % 60).toString().padLeft(2, '0');
-    return "$mins:$secs mins";
-  }
-
+  // ================= Group Messages =================
   List<List<Map<String, dynamic>>> _groupMessages(
       List<Map<String, dynamic>> messages) {
     if (messages.isEmpty) return [];
@@ -214,50 +186,71 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
         currentGroup = [messages[i]];
       }
     }
-
     grouped.add(currentGroup);
     return grouped;
   }
 
-  // ---------------- Image Upload ----------------
+  // ================= Formatting =================
+  String _formatTime(int? timestamp) {
+    if (timestamp == null) return "";
+    return DateFormat('hh:mm a')
+        .format(DateTime.fromMillisecondsSinceEpoch(timestamp));
+  }
+
+  String _formatDuration(int seconds) {
+    final mins = (seconds ~/ 60).toString().padLeft(2, '0');
+    final secs = (seconds % 60).toString().padLeft(2, '0');
+    return "$mins:$secs mins";
+  }
+
+  // ================= Scroll =================
+  void _scrollToBottom() {
+    if (!_scrollController.hasClients) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollController.animateTo(
+        0.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  // ================= Image Handling =================
   Future<void> _pickImages() async {
     if (_isBlocked) return;
-
     try {
-      final imageUrls =
-          await widget.cloudinaryService.pickAndUploadMultipleImages();
-      if (imageUrls.isNotEmpty) await _sendMessage(imageUrls: imageUrls);
+      final urls = await widget.cloudinaryService.pickAndUploadMultipleImages();
+      if (urls.isNotEmpty) await _sendMessage(imageUrls: urls);
     } catch (e) {
-      if (mounted) {
+      if (mounted)
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text("Failed to send images: $e")));
-      }
     }
   }
 
   Future<void> _takePhoto() async {
     if (_isBlocked) return;
-
     try {
-      final imageUrl = await widget.cloudinaryService.takePhotoAndUpload();
-      if (imageUrl != null) await _sendMessage(imageUrls: [imageUrl]);
+      final url = await widget.cloudinaryService.takePhotoAndUpload();
+      if (url != null) await _sendMessage(imageUrls: [url]);
     } catch (e) {
-      if (mounted) {
+      if (mounted)
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text("Failed to send photo: $e")));
-      }
     }
   }
 
-  // ---------------- UI ----------------
+  // ================= Build =================
   @override
   Widget build(BuildContext context) {
-    //nal theme = Theme.of(context);
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.grey[900],
-        title: Text(widget.otherUserName),
+        backgroundColor: theme.appBarTheme.backgroundColor,
+        foregroundColor: theme.colorScheme.onBackground,
+        title: Text(widget.otherUserName, style: theme.textTheme.titleMedium),
         actions: [
           IconButton(
               icon: const Icon(Icons.call),
@@ -265,76 +258,36 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
           IconButton(
               icon: const Icon(Icons.videocam),
               onPressed: () => _startCall(isVideo: true)),
-          _buildPopupMenu(),
+          _buildPopupMenu(theme),
         ],
       ),
       body: Column(
         children: [
-          Expanded(child: _buildMessagesList()),
-          SafeArea(child: _buildMessageInput()),
+          Expanded(child: _buildMessagesList(theme)),
+          SafeArea(child: _buildMessageInput(theme)),
         ],
       ),
     );
   }
 
-  Widget _buildPopupMenu() {
-    return PopupMenuButton<String>(
-      color: Colors.grey[850],
-      onSelected: (value) async {
-        if (value == 'delete') {
-          await _chatActions.deleteConversation(
-            chatId: widget.chatId,
-            currentUserId: widget.currentUserId,
-            participantIds: [widget.currentUserId, widget.otherUserId],
-          );
-          if (mounted) Navigator.pop(context);
-        } else if (value == 'block') {
-          if (!_isBlocked) {
-            await _chatActions.blockUser(
-              currentUserId: widget.currentUserId,
-              otherUserId: widget.otherUserId,
-              chatId: widget.chatId,
-            );
-            if (mounted) setState(() => _isBlocked = true);
-          } else {
-            await _chatActions.unblockUser(
-              currentUserId: widget.currentUserId,
-              otherUserId: widget.otherUserId,
-              chatId: widget.chatId,
-            );
-            if (mounted) setState(() => _isBlocked = false);
-          }
-        }
-      },
-      itemBuilder: (context) => [
-        const PopupMenuItem(
-            value: 'delete',
-            child: Text('Delete Conversation',
-                style: TextStyle(color: Colors.white))),
-        PopupMenuItem(
-            value: 'block',
-            child: Text(_isBlocked ? 'Unblock User' : 'Block User',
-                style: const TextStyle(color: Colors.white))),
-      ],
-    );
-  }
-
-  Widget _buildMessagesList() {
+  Widget _buildMessagesList(ThemeData theme) {
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: _messagesStream(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData)
-          return const Center(
-              child: CircularProgressIndicator(color: Colors.white));
+        if (!snapshot.hasData) {
+          return Center(
+              child: CircularProgressIndicator(
+                  color: theme.colorScheme.secondary));
+        }
 
         final messages = snapshot.data!;
-        if (messages.isEmpty)
-          return const Center(
-              child: Text("No messages yet.",
-                  style: TextStyle(color: Colors.white70)));
+        if (messages.isEmpty) {
+          return Center(
+              child:
+                  Text("No messages yet.", style: theme.textTheme.bodySmall));
+        }
 
         final groupedMessages = _groupMessages(messages);
-        WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
 
         return ListView.builder(
           controller: _scrollController,
@@ -342,21 +295,23 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
           padding: const EdgeInsets.symmetric(vertical: 8),
           itemCount: groupedMessages.length,
           itemBuilder: (context, index) {
+            // reversed index to show newest at bottom
             final group = groupedMessages[groupedMessages.length - 1 - index];
             final isMe = group[0]['senderId'] == widget.currentUserId;
 
             return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              crossAxisAlignment:
+                  isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 6),
                   child: Center(
                     child: Text(_formatTime(group[0]['timestamp']),
-                        style: const TextStyle(
-                            fontSize: 12, color: Colors.white54)),
+                        style: theme.textTheme.bodySmall
+                            ?.copyWith(color: theme.hintColor)),
                   ),
                 ),
-                ...group.map((msg) => _buildMessageTile(msg, isMe)),
+                ...group.map((msg) => _buildMessageTile(msg, isMe, theme)),
               ],
             );
           },
@@ -365,15 +320,19 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     );
   }
 
-  Widget _buildMessageTile(Map<String, dynamic> msg, bool isMe) {
+  Widget _buildMessageTile(
+      Map<String, dynamic> msg, bool isMe, ThemeData theme) {
     final type = msg['type'] ?? 'text';
     final text = msg['text'] ?? '';
     final imageUrls = (msg['imageUrls'] as List?)?.cast<String>() ?? [];
 
-    if (type == 'call') return _buildCallTile(msg, isMe);
+    if (type == 'call') return _buildCallTile(msg, isMe, theme);
 
-    final bgColor = isMe ? Colors.blueGrey[800] : Colors.grey[850];
-    final textColor = Colors.white;
+    final isDark = theme.brightness == Brightness.dark;
+    final bgColor = isMe
+        ? (isDark ? Colors.blue[700] : Colors.blue[100])
+        : (isDark ? Colors.grey[800] : Colors.grey[300]);
+    final textColor = isMe ? Colors.white : Colors.black87;
 
     return GestureDetector(
       onLongPress: isMe
@@ -381,22 +340,21 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
               final confirm = await showDialog<bool>(
                 context: context,
                 builder: (_) => AlertDialog(
-                  backgroundColor: Colors.grey[900],
-                  title: const Text('Unsend Message?',
-                      style: TextStyle(color: Colors.white)),
+                  backgroundColor: theme.dialogBackgroundColor,
+                  title: Text('Unsend Message?',
+                      style: theme.textTheme.titleMedium),
                   actions: [
                     TextButton(
                         onPressed: () => Navigator.pop(context, false),
-                        child: const Text('Cancel',
-                            style: TextStyle(color: Colors.white))),
+                        child:
+                            Text('Cancel', style: theme.textTheme.bodyMedium)),
                     TextButton(
                         onPressed: () => Navigator.pop(context, true),
-                        child: const Text('Unsend',
-                            style: TextStyle(color: Colors.white))),
+                        child:
+                            Text('Unsend', style: theme.textTheme.bodyMedium)),
                   ],
                 ),
               );
-
               if (confirm == true) {
                 await _chatActions.unsendMessage(
                     chatId: widget.chatId, messageKey: msg['key']);
@@ -415,25 +373,21 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
-                  color: bgColor,
-                  borderRadius: BorderRadius.circular(20),
-                ),
+                    color: bgColor, borderRadius: BorderRadius.circular(20)),
                 child: Text(text,
                     style: TextStyle(fontSize: 16, color: textColor)),
               ),
             if (imageUrls.isNotEmpty)
               Column(
                 children: imageUrls
-                    .map(
-                      (url) => Padding(
-                        padding: const EdgeInsets.only(top: 5),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(15),
-                          child:
-                              Image.network(url, fit: BoxFit.cover, width: 200),
-                        ),
-                      ),
-                    )
+                    .map((url) => Padding(
+                          padding: const EdgeInsets.only(top: 5),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(15),
+                            child: Image.network(url,
+                                fit: BoxFit.cover, width: 200),
+                          ),
+                        ))
                     .toList(),
               ),
           ],
@@ -442,13 +396,15 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     );
   }
 
-  Widget _buildCallTile(Map<String, dynamic> msg, bool isMe) {
+  Widget _buildCallTile(Map<String, dynamic> msg, bool isMe, ThemeData theme) {
     final isVideo = msg['isVideo'] ?? true;
     final duration = msg['duration'] ?? 0;
     final isMissed = msg['missed'] ?? false;
-
-    final bgColor = isMe ? Colors.blueGrey[800] : Colors.grey[850];
-    final textColor = Colors.white;
+    final isDark = theme.brightness == Brightness.dark;
+    final bgColor = isMe
+        ? (isDark ? Colors.blue[700] : Colors.blue[100])
+        : (isDark ? Colors.grey[800] : Colors.grey[300]);
+    final textColor = isMe ? Colors.white : Colors.black87;
 
     return GestureDetector(
       onTap: () => _startCall(isVideo: isVideo),
@@ -457,9 +413,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
             left: isMe ? 50 : 10, right: isMe ? 10 : 50, top: 4, bottom: 4),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(20),
-        ),
+            color: bgColor, borderRadius: BorderRadius.circular(20)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -469,47 +423,47 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                   : (isMissed ? "Missed Voice Call" : "Voice Call"),
               style: TextStyle(fontWeight: FontWeight.bold, color: textColor),
             ),
-            if (!isMissed) ...[
-              const SizedBox(height: 4),
+            if (!isMissed) SizedBox(height: 4),
+            if (!isMissed)
               Text(_formatDuration(duration),
                   style: TextStyle(color: textColor)),
-            ],
-            const SizedBox(height: 4),
-            const Text("Call Again",
-                style: TextStyle(color: Colors.blueAccent)),
+            SizedBox(height: 4),
+            Text("Call Again",
+                style: TextStyle(color: theme.colorScheme.secondary)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildMessageInput() {
+  Widget _buildMessageInput(ThemeData theme) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      color: Colors.grey[900],
+      color: theme.appBarTheme.backgroundColor,
       child: Row(
         children: [
           IconButton(
-              icon: const Icon(Icons.photo_outlined, color: Colors.white),
+              icon: Icon(Icons.photo_outlined, color: theme.iconTheme.color),
               onPressed: _isBlocked ? null : _pickImages),
           IconButton(
-              icon: const Icon(Icons.camera_alt_outlined, color: Colors.white),
+              icon:
+                  Icon(Icons.camera_alt_outlined, color: theme.iconTheme.color),
               onPressed: _isBlocked ? null : _takePhoto),
           Expanded(
             child: TextField(
               controller: _messageController,
               textCapitalization: TextCapitalization.sentences,
               enabled: !_isBlocked,
-              style: const TextStyle(color: Colors.white),
+              style: theme.textTheme.bodyMedium,
               decoration: InputDecoration(
                 hintText: _isBlocked
                     ? "You have blocked this user"
                     : "Type a message...",
-                hintStyle: TextStyle(color: Colors.white54),
+                hintStyle: theme.textTheme.bodySmall,
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(25),
                     borderSide: BorderSide.none),
-                fillColor: Colors.grey[800],
+                fillColor: theme.cardColor,
                 filled: true,
                 contentPadding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
@@ -518,10 +472,50 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
           ),
           IconButton(
               icon: const Icon(Icons.send),
-              color: Colors.blueAccent,
+              color: theme.colorScheme.secondary,
               onPressed: _isBlocked ? null : _sendMessage),
         ],
       ),
+    );
+  }
+
+  Widget _buildPopupMenu(ThemeData theme) {
+    return PopupMenuButton<String>(
+      color: theme.cardColor,
+      onSelected: (value) async {
+        if (value == 'delete') {
+          await _chatActions.deleteConversation(
+            chatId: widget.chatId,
+            currentUserId: widget.currentUserId,
+            participantIds: [widget.currentUserId, widget.otherUserId],
+          );
+          if (mounted) Navigator.pop(context);
+        } else if (value == 'block') {
+          if (!_isBlocked) {
+            await _chatActions.blockUser(
+                currentUserId: widget.currentUserId,
+                otherUserId: widget.otherUserId,
+                chatId: widget.chatId);
+            if (mounted) setState(() => _isBlocked = true);
+          } else {
+            await _chatActions.unblockUser(
+                currentUserId: widget.currentUserId,
+                otherUserId: widget.otherUserId,
+                chatId: widget.chatId);
+            if (mounted) setState(() => _isBlocked = false);
+          }
+        }
+      },
+      itemBuilder: (_) => [
+        PopupMenuItem(
+            value: 'delete',
+            child: Text('Delete Conversation',
+                style: TextStyle(color: theme.textTheme.bodyMedium?.color))),
+        PopupMenuItem(
+            value: 'block',
+            child: Text(_isBlocked ? 'Unblock User' : 'Block User',
+                style: TextStyle(color: theme.textTheme.bodyMedium?.color))),
+      ],
     );
   }
 }

@@ -67,9 +67,10 @@ class _ExplorePageState extends State<ExplorePage> {
 
   Future<String?> _showEmojiPicker(BuildContext context) async {
     const emojis = ['❤️', '😆', '😮', '😢', '😡'];
+    final theme = Theme.of(context);
     return showModalBottomSheet<String>(
       context: context,
-      backgroundColor: Colors.grey[850],
+      backgroundColor: theme.cardColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -81,8 +82,10 @@ class _ExplorePageState extends State<ExplorePage> {
               .map(
                 (emoji) => GestureDetector(
                   onTap: () => Navigator.pop(context, emoji),
-                  child: Text(emoji,
-                      style: GoogleFonts.notoColorEmoji(fontSize: 36)),
+                  child: Text(
+                    emoji,
+                    style: GoogleFonts.notoColorEmoji(fontSize: 36),
+                  ),
                 ),
               )
               .toList(),
@@ -122,30 +125,32 @@ class _ExplorePageState extends State<ExplorePage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final postsRef =
         _firestore.collection('posts').orderBy('createdAt', descending: true);
-    //nal theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: Colors.grey[900],
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Explore'),
-        backgroundColor: Colors.grey[850],
+        backgroundColor: theme.appBarTheme.backgroundColor,
         elevation: 0,
         automaticallyImplyLeading: false,
       ),
       body: RefreshIndicator(
-        color: Colors.purpleAccent,
-        backgroundColor: Colors.grey[800],
+        color: theme.colorScheme.secondary,
+        backgroundColor: theme.scaffoldBackgroundColor,
         onRefresh: _refreshPosts,
         child: StreamBuilder<QuerySnapshot>(
           stream: postsRef.snapshots(),
           builder: (context, snapshot) {
-            if (!snapshot.hasData)
-              return const Center(
-                  child: CircularProgressIndicator(
-                color: Colors.purpleAccent,
-              ));
+            if (!snapshot.hasData) {
+              return Center(
+                child: CircularProgressIndicator(
+                    color: theme.colorScheme.secondary),
+              );
+            }
+
             final posts = snapshot.data!.docs;
 
             return ListView.builder(
@@ -177,13 +182,13 @@ class _ExplorePageState extends State<ExplorePage> {
                     return Container(
                       margin: const EdgeInsets.only(bottom: 14),
                       decoration: BoxDecoration(
-                        color: Colors.grey[850],
+                        color: theme.cardColor,
                         borderRadius: BorderRadius.circular(16),
-                        boxShadow: const [
+                        boxShadow: [
                           BoxShadow(
-                              color: Colors.black54,
+                              color: theme.shadowColor,
                               blurRadius: 6,
-                              offset: Offset(0, 3)),
+                              offset: const Offset(0, 3)),
                         ],
                       ),
                       child: Column(
@@ -197,28 +202,24 @@ class _ExplorePageState extends State<ExplorePage> {
                               onTap: () => _showProfileModal(context, user),
                               child: CircleAvatar(
                                 radius: 22,
-                                backgroundColor: Colors.grey[700],
+                                backgroundColor: theme.dividerColor,
                                 backgroundImage: user['avatar']!.isNotEmpty
                                     ? NetworkImage(user['avatar']!)
                                     : null,
                                 child: user['avatar']!.isEmpty
-                                    ? const Icon(Icons.person,
-                                        color: Colors.grey)
+                                    ? Icon(Icons.person,
+                                        color: theme.iconTheme.color)
                                     : null,
                               ),
                             ),
                             title: GestureDetector(
                               onTap: () => _showProfileModal(context, user),
                               child: Text(user['name']!,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 15,
-                                      color: Colors.white)),
+                                  style: theme.textTheme.titleMedium),
                             ),
                             subtitle: Text(
                               DateFormat.yMMMd().add_jm().format(createdAt),
-                              style: TextStyle(
-                                  color: Colors.grey[400], fontSize: 12),
+                              style: theme.textTheme.bodySmall,
                             ),
                           ),
 
@@ -227,16 +228,11 @@ class _ExplorePageState extends State<ExplorePage> {
                             Padding(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 14, vertical: 6),
-                              child: Text(
-                                caption,
-                                style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.white70),
-                              ),
+                              child: Text(caption,
+                                  style: theme.textTheme.bodyMedium),
                             ),
 
-                          // Post Images
+                          // Images
                           if (images.isNotEmpty)
                             Column(
                               children: [
@@ -248,11 +244,9 @@ class _ExplorePageState extends State<ExplorePage> {
                                         () => _currentPages[postDoc.id] = page),
                                     itemBuilder: (context, i) => ClipRRect(
                                       borderRadius: BorderRadius.circular(16),
-                                      child: Image.network(
-                                        images[i],
-                                        fit: BoxFit.cover,
-                                        width: double.infinity,
-                                      ),
+                                      child: Image.network(images[i],
+                                          fit: BoxFit.cover,
+                                          width: double.infinity),
                                     ),
                                   ),
                                 ),
@@ -274,8 +268,8 @@ class _ExplorePageState extends State<ExplorePage> {
                                           width: i == currentPage ? 20 : 8,
                                           decoration: BoxDecoration(
                                             color: i == currentPage
-                                                ? Colors.purpleAccent
-                                                : Colors.grey[600],
+                                                ? theme.colorScheme.secondary
+                                                : theme.dividerColor,
                                             borderRadius:
                                                 BorderRadius.circular(10),
                                           ),
@@ -358,16 +352,14 @@ class _ExplorePageState extends State<ExplorePage> {
                                             ),
                                           const Spacer(),
                                           IconButton(
-                                            icon: const Icon(
-                                                Icons.comment_outlined,
+                                            icon: Icon(Icons.comment_outlined,
                                                 size: 22,
-                                                color: Colors.white),
+                                                color: theme.iconTheme.color),
                                             onPressed: () =>
                                                 _openComments(postDoc.id),
                                           ),
                                           Text("$commentCount",
-                                              style: TextStyle(
-                                                  color: Colors.grey[400])),
+                                              style: theme.textTheme.bodySmall),
                                           const SizedBox(width: 6),
                                         ],
                                       ),
@@ -387,19 +379,9 @@ class _ExplorePageState extends State<ExplorePage> {
           },
         ),
       ),
-      floatingActionButton: GestureDetector(
-        onTap: _openNewPost,
-        child: SizedBox(
-          width: 60,
-          height: 60,
-          child: Center(
-            child: Image.asset(
-              'assets/icons/heart.png',
-              width: 32,
-              height: 32,
-            ),
-          ),
-        ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _openNewPost,
+        child: Image.asset('assets/icons/heart.png', width: 32, height: 32),
       ),
     );
   }

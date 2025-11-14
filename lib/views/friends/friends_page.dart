@@ -44,29 +44,34 @@ class _FriendsPageState extends State<FriendsPage>
 
   @override
   Widget build(BuildContext context) {
-    //nal theme = Theme.of(context);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: Colors.grey[900],
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        automaticallyImplyLeading: false, // removes the back button
-        title: const Text(
+        automaticallyImplyLeading: false,
+        title: Text(
           "Friends",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+          style:
+              theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Colors.grey[850],
+        backgroundColor: theme.appBarTheme.backgroundColor,
         elevation: 2,
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
-          labelColor: Colors.redAccent,
-          unselectedLabelColor: Colors.grey[400],
-          indicator: const UnderlineTabIndicator(
-            borderSide: BorderSide(width: 3.0, color: Colors.redAccent),
-            insets: EdgeInsets.symmetric(horizontal: 16),
+          labelColor: isDark ? Colors.redAccent : Colors.red,
+          unselectedLabelColor: isDark
+              ? Colors.white70
+              : Colors.black54, // contrast for unselected tabs
+          indicator: UnderlineTabIndicator(
+            borderSide: BorderSide(
+                width: 3.0,
+                color: isDark
+                    ? const Color.fromARGB(255, 160, 26, 107)
+                    : const Color.fromARGB(255, 200, 55, 156)),
+            insets: const EdgeInsets.symmetric(horizontal: 16),
           ),
           tabs: _tabs,
         ),
@@ -75,7 +80,7 @@ class _FriendsPageState extends State<FriendsPage>
         controller: _tabController,
         children: _tabViews.map((tabView) {
           return Container(
-            color: Colors.grey[900],
+            color: theme.scaffoldBackgroundColor,
             child: tabView,
           );
         }).toList(),
