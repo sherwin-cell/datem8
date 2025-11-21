@@ -1,10 +1,13 @@
+// registration_page.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:datem8/services/cloudinary_service.dart';
 import 'package:datem8/widgets/main_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class RegistrationPage extends StatefulWidget {
   final CloudinaryService cloudinaryService;
@@ -36,18 +39,27 @@ class _RegistrationPageState extends State<RegistrationPage> {
       setState(() => _profileImage = File(pickedFile.path));
   }
 
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
   Future<void> _saveProfile() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
+    final age = int.tryParse(_ageController.text.trim());
     if (_firstNameController.text.trim().isEmpty ||
         _lastNameController.text.trim().isEmpty ||
-        _ageController.text.trim().isEmpty ||
+        age == null ||
         _gender == null ||
         _interestedIn == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please complete all required fields")),
-      );
+      _showSnack("Please complete all required fields");
+      return;
+    }
+
+    if (age < 18) {
+      _showSnack("You must be 18 years old or older to register");
       return;
     }
 
@@ -63,7 +75,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
       await FirebaseFirestore.instance.collection("users").doc(user.uid).set({
         "firstName": _firstNameController.text.trim(),
         "lastName": _lastNameController.text.trim(),
-        "age": int.tryParse(_ageController.text.trim()) ?? 0,
+        "age": age,
         "gender": _gender,
         "interestedIn": _interestedIn,
         "course": _courseController.text.trim(),
@@ -88,129 +100,203 @@ class _RegistrationPageState extends State<RegistrationPage> {
         ),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error saving profile: $e")),
-      );
+      _showSnack("Error saving profile: $e");
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
-  Widget _buildGenderOption(String label, String value) {
-    final isSelected = _gender == value;
+  Widget _buildOptionButton(String label, String value, bool isForInterested) {
+    final isSelected =
+        isForInterested ? _interestedIn == value : _gender == value;
     return GestureDetector(
-      onTap: () => setState(() => _gender = value),
-      child: CircleAvatar(
-        radius: 20,
-        backgroundColor: isSelected ? Colors.blue : Colors.grey[300],
+      onTap: () {
+        setState(() {
+          if (isForInterested) {
+            _interestedIn = value;
+          } else {
+            _gender = value;
+          }
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.pinkAccent : Colors.white.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(20),
+        ),
         child: Text(
-          label[0],
+          label,
           style: TextStyle(
-              color: isSelected ? Colors.white : Colors.black,
-              fontWeight: FontWeight.bold),
+            color: isSelected ? Colors.white : Colors.white70,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildInterestedOption(String label, String value) {
-    return ChoiceChip(
-      label: Text(label),
-      selected: _interestedIn == value,
-      onSelected: (_) => setState(() => _interestedIn = value),
+  Widget _buildTextField(TextEditingController controller, String label,
+      {int maxLines = 1, TextInputType? keyboardType}) {
+    return TextField(
+      controller: controller,
+      maxLines: maxLines,
+      keyboardType: keyboardType,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.white70),
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.1),
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none),
+        contentPadding:
+            const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Complete Registration")),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            GestureDetector(
-              onTap: _pickImage,
-              child: CircleAvatar(
-                radius: 50,
-                backgroundImage:
-                    _profileImage != null ? FileImage(_profileImage!) : null,
-                child: _profileImage == null
-                    ? const Icon(Icons.camera_alt, size: 40)
-                    : null,
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF0A0A0A), Color(0xFFFF3D6A)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              Text(
+                "Complete Your Profile",
+                style: GoogleFonts.readexPro(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white),
               ),
-            ),
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey),
-                  borderRadius: BorderRadius.circular(12)),
-              child: Column(
+              const SizedBox(height: 20),
+              GestureDetector(
+                onTap: _pickImage,
+                child: CircleAvatar(
+                  radius: 50,
+                  backgroundImage:
+                      _profileImage != null ? FileImage(_profileImage!) : null,
+                  backgroundColor: Colors.white.withOpacity(0.2),
+                  child: _profileImage == null
+                      ? const Icon(Icons.camera_alt,
+                          size: 40, color: Colors.white70)
+                      : null,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    _buildTextField(_firstNameController, "First Name"),
+                    const SizedBox(height: 10),
+                    _buildTextField(_lastNameController, "Last Name"),
+                    const SizedBox(height: 10),
+                    _buildTextField(_ageController, "Age (18+)",
+                        keyboardType: TextInputType.number),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Gender Section
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TextField(
-                      controller: _firstNameController,
-                      decoration:
-                          const InputDecoration(labelText: "First Name")),
+                  Text(
+                    "Gender: ${_gender ?? 'Not selected'}",
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 10),
-                  TextField(
-                      controller: _lastNameController,
-                      decoration:
-                          const InputDecoration(labelText: "Last Name")),
-                  const SizedBox(height: 10),
-                  TextField(
-                      controller: _ageController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: "Age")),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildOptionButton("Female", "Female", false),
+                      _buildOptionButton("Male", "Male", false),
+                      _buildOptionButton("Custom", "Custom", false),
+                    ],
+                  ),
                 ],
               ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildGenderOption("Female", "Female"),
-                _buildGenderOption("Male", "Male"),
-                _buildGenderOption("Custom", "Custom"),
-              ],
-            ),
-            const SizedBox(height: 20),
-            TextField(
-                controller: _courseController,
-                decoration: const InputDecoration(labelText: "Course")),
-            const SizedBox(height: 10),
-            TextField(
-                controller: _departmentController,
-                decoration: const InputDecoration(labelText: "Department")),
-            const SizedBox(height: 20),
-            Wrap(
-              spacing: 10,
-              children: [
-                _buildInterestedOption("Female", "Female"),
-                _buildInterestedOption("Male", "Male"),
-                _buildInterestedOption("All", "All"),
-              ],
-            ),
-            const SizedBox(height: 20),
-            TextField(
-                controller: _interestsController,
-                decoration: const InputDecoration(
-                    labelText: "Interests/Hobbies (comma separated)")),
-            const SizedBox(height: 10),
-            TextField(
-                controller: _bioController,
-                decoration: const InputDecoration(labelText: "Bio/About Me"),
-                maxLines: 3),
-            const SizedBox(height: 20),
-            _isLoading
-                ? const CircularProgressIndicator()
-                : ElevatedButton(
-                    onPressed: _saveProfile,
-                    style: ElevatedButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 50)),
-                    child: const Text("Save Profile"),
+              const SizedBox(height: 20),
+
+              // Course and Department
+              _buildTextField(_courseController, "Course"),
+              const SizedBox(height: 10),
+              _buildTextField(_departmentController, "Department"),
+              const SizedBox(height: 20),
+
+              // Interested In Section
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Interested In: ${_interestedIn ?? 'Not selected'}",
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold),
                   ),
-          ],
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildOptionButton("Female", "Female", true),
+                      _buildOptionButton("Male", "Male", true),
+                      _buildOptionButton("All", "All", true),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              _buildTextField(
+                  _interestsController, "Interests/Hobbies (comma separated)"),
+              const SizedBox(height: 10),
+              _buildTextField(_bioController, "Bio/About Me", maxLines: 3),
+              const SizedBox(height: 30),
+
+              _isLoading
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _saveProfile,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.pinkAccent,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(40)),
+                        ),
+                        child: Text(
+                          "Save Profile",
+                          style: GoogleFonts.readexPro(
+                              fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+            ],
+          ),
         ),
       ),
     );

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:datem8/services/cloudinary_service.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class EditProfilePage extends StatefulWidget {
   final CloudinaryService cloudinaryService;
@@ -48,8 +49,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
           .get();
 
       if (!mounted || !doc.exists) return;
-
       final data = doc.data()!;
+
       setState(() {
         _firstName = data['firstName'] ?? '';
         _lastName = data['lastName'] ?? '';
@@ -60,23 +61,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
         _gender = data['gender'];
         _interestedIn = data['interestedIn'];
         _interests = List<String>.from(data['interests'] ?? []);
-        _profilePicUrl = data['profilePic'] ?? data['profileImageUrl'];
+        _profilePicUrl = data['profilePic'] ?? '';
         _isLoading = false;
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to load profile: $e")),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Failed to load profile: $e")));
       setState(() => _isLoading = false);
     }
   }
 
   Future<void> _pickProfileImage() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() => _newProfilePic = File(pickedFile.path));
+    final picked = await picker.pickImage(source: ImageSource.gallery);
+    if (picked != null) {
+      setState(() => _newProfilePic = File(picked.path));
     }
   }
 
@@ -88,7 +88,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     try {
       String? profilePicUrl = _profilePicUrl;
-
       if (_newProfilePic != null) {
         profilePicUrl =
             await widget.cloudinaryService.uploadImage(_newProfilePic!);
@@ -108,10 +107,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
         'interestedIn': _interestedIn,
         'interests': _interests,
         'profilePic': profilePicUrl,
+        'profileImageUrl': profilePicUrl,
       });
 
       if (!mounted) return;
-      Navigator.pop(context, true); // indicate success
+      Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
@@ -120,150 +120,164 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
-  Widget _buildTextField({
+  Widget _input({
     required String label,
-    String? initialValue,
-    TextInputType keyboardType = TextInputType.text,
-    String? Function(String?)? validator,
+    String? value,
+    TextInputType type = TextInputType.text,
     void Function(String?)? onSaved,
+    String? Function(String?)? validator,
     int maxLines = 1,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: TextFormField(
-        initialValue: initialValue,
-        decoration: InputDecoration(labelText: label),
-        keyboardType: keyboardType,
-        validator: validator,
-        onSaved: onSaved,
-        maxLines: maxLines,
-      ),
-    );
-  }
-
-  Widget _buildDropdown<T>({
-    required String label,
-    required T? value,
-    required List<T> items,
-    required void Function(T?) onChanged,
-    String? Function(T?)? validator,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: DropdownButtonFormField<T>(
-        decoration: InputDecoration(labelText: label),
-        value: value,
-        items: items
-            .map((e) => DropdownMenuItem(value: e, child: Text(e.toString())))
-            .toList(),
-        onChanged: onChanged,
-        validator: validator,
-      ),
-    );
-  }
+  }) =>
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: GoogleFonts.readexPro(
+                  fontSize: 14,
+                  color: Colors.white70,
+                  fontWeight: FontWeight.w500)),
+          const SizedBox(height: 6),
+          TextFormField(
+            initialValue: value,
+            keyboardType: type,
+            maxLines: maxLines,
+            validator: validator,
+            onSaved: onSaved,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.white.withOpacity(0.12),
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none),
+              contentPadding:
+                  const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+      );
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Edit Profile")),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    GestureDetector(
-                      onTap: _pickProfileImage,
-                      child: CircleAvatar(
-                        radius: 50,
-                        backgroundImage: _newProfilePic != null
-                            ? FileImage(_newProfilePic!)
-                            : (_profilePicUrl != null &&
-                                    _profilePicUrl!.isNotEmpty
-                                ? NetworkImage(_profilePicUrl!)
-                                : null) as ImageProvider<Object>?,
-                        child: (_newProfilePic == null &&
-                                (_profilePicUrl == null ||
-                                    _profilePicUrl!.isEmpty))
-                            ? const Icon(Icons.person, size: 50)
-                            : null,
+      appBar: AppBar(
+        title: Text("Edit Profile",
+            style: GoogleFonts.readexPro(
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            )),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      extendBodyBehindAppBar: true,
+      body: Container(
+        padding: const EdgeInsets.only(top: 100),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF0A0A0A), Color(0xFFFF3D6A)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(color: Colors.white))
+            : SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      GestureDetector(
+                        onTap: _pickProfileImage,
+                        child: CircleAvatar(
+                          radius: 55,
+                          backgroundColor: Colors.white.withOpacity(0.2),
+                          backgroundImage: _newProfilePic != null
+                              ? FileImage(_newProfilePic!)
+                              : (_profilePicUrl != null &&
+                                      _profilePicUrl!.isNotEmpty
+                                  ? NetworkImage(_profilePicUrl!)
+                                  : null) as ImageProvider?,
+                          child: (_newProfilePic == null &&
+                                  (_profilePicUrl == null ||
+                                      _profilePicUrl!.isEmpty))
+                              ? const Icon(Icons.camera_alt,
+                                  size: 52, color: Colors.white70)
+                              : null,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildTextField(
-                      label: "First Name",
-                      initialValue: _firstName,
-                      validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-                      onSaved: (v) => _firstName = v,
-                    ),
-                    _buildTextField(
-                      label: "Last Name",
-                      initialValue: _lastName,
-                      validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-                      onSaved: (v) => _lastName = v,
-                    ),
-                    _buildTextField(
-                      label: "Age",
-                      initialValue: _age?.toString(),
-                      keyboardType: TextInputType.number,
-                      validator: (v) {
-                        if (v == null || v.isEmpty) return 'Required';
-                        final n = int.tryParse(v);
-                        if (n == null || n <= 0) return 'Enter valid age';
-                        return null;
-                      },
-                      onSaved: (v) => _age = int.parse(v!),
-                    ),
-                    _buildTextField(
-                      label: "Course",
-                      initialValue: _course,
-                      onSaved: (v) => _course = v,
-                    ),
-                    _buildTextField(
-                      label: "Department",
-                      initialValue: _department,
-                      onSaved: (v) => _department = v,
-                    ),
-                    _buildDropdown<String>(
-                      label: "Gender",
-                      value: _gender,
-                      items: ['Male', 'Female', 'Other'],
-                      onChanged: (v) => setState(() => _gender = v),
-                      validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-                    ),
-                    _buildDropdown<String>(
-                      label: "Interested In",
-                      value: _interestedIn,
-                      items: ['Male', 'Female', 'Other'],
-                      onChanged: (v) => setState(() => _interestedIn = v),
-                      validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-                    ),
-                    _buildTextField(
-                      label: "Bio",
-                      initialValue: _bio,
-                      maxLines: 3,
-                      onSaved: (v) => _bio = v,
-                    ),
-                    _buildTextField(
-                      label: "Interests (comma separated)",
-                      initialValue: _interests.join(', '),
-                      onSaved: (v) {
-                        _interests = v != null && v.isNotEmpty
-                            ? v.split(',').map((e) => e.trim()).toList()
-                            : [];
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: _saveProfile,
-                      child: const Text("Save Changes"),
-                    ),
-                  ],
+                      const SizedBox(height: 25),
+                      _input(
+                          label: "First Name",
+                          value: _firstName,
+                          validator: (v) =>
+                              v == null || v.isEmpty ? "Required" : null,
+                          onSaved: (v) => _firstName = v),
+                      _input(
+                          label: "Last Name",
+                          value: _lastName,
+                          validator: (v) =>
+                              v == null || v.isEmpty ? "Required" : null,
+                          onSaved: (v) => _lastName = v),
+                      _input(
+                          label: "Age",
+                          value: _age?.toString(),
+                          type: TextInputType.number,
+                          validator: (v) {
+                            if (v == null || v.isEmpty) return "Required";
+                            final n = int.tryParse(v);
+                            if (n == null || n <= 0) return "Enter valid age";
+                            return null;
+                          },
+                          onSaved: (v) => _age = int.parse(v!)),
+                      _input(
+                          label: "Course",
+                          value: _course,
+                          onSaved: (v) => _course = v),
+                      _input(
+                          label: "Department",
+                          value: _department,
+                          onSaved: (v) => _department = v),
+                      _input(
+                          label: "Bio",
+                          value: _bio,
+                          maxLines: 3,
+                          onSaved: (v) => _bio = v),
+                      _input(
+                        label: "Interests (comma separated)",
+                        value: _interests.join(", "),
+                        onSaved: (v) {
+                          _interests = v != null && v.isNotEmpty
+                              ? v.split(",").map((e) => e.trim()).toList()
+                              : [];
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 55,
+                        child: ElevatedButton(
+                          onPressed: _saveProfile,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: const Color(0xFFFF3D6A),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                          ),
+                          child: Text("Save Changes",
+                              style: GoogleFonts.readexPro(
+                                  fontWeight: FontWeight.bold, fontSize: 18)),
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+                    ],
+                  ),
                 ),
               ),
-            ),
+      ),
     );
   }
 }

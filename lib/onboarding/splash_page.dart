@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:datem8/onboarding/welcome_page.dart';
 import 'package:datem8/widgets/main_screen.dart';
 import 'package:datem8/services/cloudinary_service.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class SplashPage extends StatefulWidget {
   final CloudinaryService cloudinaryService;
@@ -18,16 +19,14 @@ class _SplashPageState extends State<SplashPage>
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
-  late Animation<double> _rotationAnimation;
 
   @override
   void initState() {
     super.initState();
 
-    // Animation setup
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 2),
+      duration: const Duration(seconds: 3),
     );
 
     _fadeAnimation = CurvedAnimation(
@@ -35,44 +34,26 @@ class _SplashPageState extends State<SplashPage>
       curve: Curves.easeInOut,
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.6, end: 1.0).animate(
+    _scaleAnimation = Tween<double>(begin: 0.75, end: 1.0).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
     );
 
-    _rotationAnimation = Tween<double>(begin: -0.2, end: 0.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
-
-    _controller.forward();
-
-    _navigate();
+    _controller.forward().whenComplete(() => _navigate());
   }
 
   Future<void> _navigate() async {
-    await Future.delayed(const Duration(seconds: 3)); // splash duration
-
-    final user = FirebaseAuth.instance.currentUser;
+    await Future.delayed(const Duration(milliseconds: 500));
     if (!mounted) return;
 
-    if (user != null) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => MainScreen(
-            cloudinaryService: widget.cloudinaryService,
-          ),
-        ),
-      );
-    } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => WelcomePage(
-            cloudinaryService: widget.cloudinaryService,
-          ),
-        ),
-      );
-    }
+    final user = FirebaseAuth.instance.currentUser;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => user != null
+            ? MainScreen(cloudinaryService: widget.cloudinaryService)
+            : WelcomePage(cloudinaryService: widget.cloudinaryService),
+      ),
+    );
   }
 
   @override
@@ -84,18 +65,40 @@ class _SplashPageState extends State<SplashPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: ScaleTransition(
-            scale: _scaleAnimation,
-            child: RotationTransition(
-              turns: _rotationAnimation,
-              child: Image.asset(
-                'assets/images/logo.png',
-                width: 150,
-                height: 150,
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF0A0A0A), Color(0xFFFF3D6A)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: Center(
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: ScaleTransition(
+              scale: _scaleAnimation,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.asset(
+                    'assets/images/logog.png',
+                    width: 140,
+                    height: 140,
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    "DateM8 ",
+                    style: GoogleFonts.readexPro(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: const Color.fromARGB(255, 225, 204, 204),
+                      letterSpacing: 1.3,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

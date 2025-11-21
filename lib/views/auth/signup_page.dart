@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:datem8/services/cloudinary_service.dart';
-import 'verification_page.dart';
+import 'package:datem8/views/auth/verification_page.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class SignUpPage extends StatefulWidget {
   final CloudinaryService cloudinaryService;
@@ -76,13 +77,11 @@ class _SignUpPageState extends State<SignUpPage> {
       }
     } on FirebaseAuthException catch (e) {
       String message = "Sign up failed";
-      if (e.code == 'email-already-in-use') {
+      if (e.code == 'email-already-in-use')
         message = "You already have an account";
-      } else if (e.code == 'weak-password') {
+      else if (e.code == 'weak-password')
         message = "Password is too weak";
-      } else if (e.message != null) {
-        message = e.message!;
-      }
+      else if (e.message != null) message = e.message!;
       if (mounted) _showSnack(message);
     } catch (e) {
       if (mounted) _showSnack("An unexpected error occurred");
@@ -99,72 +98,163 @@ class _SignUpPageState extends State<SignUpPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-          title: const Text("Sign Up"), automaticallyImplyLeading: false),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              TextField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(labelText: "Email"),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _passwordController,
-                obscureText: _obscurePassword,
-                decoration: InputDecoration(
-                  labelText: "Password",
-                  suffixIcon: GestureDetector(
-                    onTap: () =>
-                        setState(() => _obscurePassword = !_obscurePassword),
-                    child: Transform.scale(
-                      scale: 0.9,
+      body: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF0A0A0A), Color(0xFFFF3D6A)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: Center(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 50),
+
+                // Header
+                Text(
+                  "Create Account",
+                  style: GoogleFonts.readexPro(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  "Sign up to get started",
+                  style: GoogleFonts.readexPro(
+                    fontSize: 16,
+                    color: Colors.white70,
+                  ),
+                ),
+                const SizedBox(height: 40),
+
+                // Email
+                TextFormField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: "Email",
+                    labelStyle: const TextStyle(color: Colors.white70),
+                    filled: true,
+                    fillColor: Colors.white.withOpacity(0.1),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                        vertical: 20, horizontal: 16),
+                  ),
+                  style: const TextStyle(color: Colors.white),
+                ),
+                const SizedBox(height: 16),
+
+                // Password
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
+                    labelText: "Password",
+                    labelStyle: const TextStyle(color: Colors.white70),
+                    filled: true,
+                    fillColor: Colors.white.withOpacity(0.1),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                        vertical: 20, horizontal: 16),
+                    suffixIcon: GestureDetector(
+                      onTap: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
                       child: Icon(
                         _obscurePassword
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
-                        size: 18,
-                        color: Colors.grey[600],
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                        color: Colors.white70,
+                        size: 22,
                       ),
                     ),
                   ),
+                  style: const TextStyle(color: Colors.white),
                 ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _confirmPasswordController,
-                obscureText: _obscureConfirmPassword,
-                decoration: InputDecoration(
-                  labelText: "Confirm Password",
-                  suffixIcon: GestureDetector(
-                    onTap: () => setState(() =>
-                        _obscureConfirmPassword = !_obscureConfirmPassword),
-                    child: Transform.scale(
-                      scale: 0.9,
+                const SizedBox(height: 16),
+
+                // Confirm Password
+                TextFormField(
+                  controller: _confirmPasswordController,
+                  obscureText: _obscureConfirmPassword,
+                  decoration: InputDecoration(
+                    labelText: "Confirm Password",
+                    labelStyle: const TextStyle(color: Colors.white70),
+                    filled: true,
+                    fillColor: Colors.white.withOpacity(0.1),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                        vertical: 20, horizontal: 16),
+                    suffixIcon: GestureDetector(
+                      onTap: () => setState(() =>
+                          _obscureConfirmPassword = !_obscureConfirmPassword),
                       child: Icon(
                         _obscureConfirmPassword
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
-                        size: 18,
-                        color: Colors.grey[600],
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                        color: Colors.white70,
+                        size: 22,
                       ),
                     ),
                   ),
+                  style: const TextStyle(color: Colors.white),
                 ),
-              ),
-              const SizedBox(height: 20),
-              _isLoading
-                  ? const CircularProgressIndicator()
-                  : ElevatedButton(
-                      onPressed: _createAccount,
-                      style: ElevatedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 50)),
-                      child: const Text("Create Account"),
+                const SizedBox(height: 24),
+
+                // Sign Up Button
+                _isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          onPressed: _createAccount,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.pinkAccent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(40),
+                            ),
+                          ),
+                          child: Text(
+                            "Sign Up",
+                            style: GoogleFonts.readexPro(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                const SizedBox(height: 16),
+
+                // Redirect to Login
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    "Already have an account? Login",
+                    style: GoogleFonts.readexPro(
+                      fontSize: 12,
+                      color: Colors.white,
                     ),
-            ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:datem8/services/cloudinary_service.dart';
 import 'package:datem8/widgets/main_screen.dart';
 import 'package:datem8/views/auth/signup_page.dart';
-import 'package:datem8/helper/app_colors.dart';
 import 'package:datem8/helper/app.icons.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -26,6 +25,7 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
+    FocusScope.of(context).unfocus(); // dismiss keyboard
 
     setState(() => _isLoading = true);
 
@@ -46,11 +46,9 @@ class _LoginPageState extends State<LoginPage> {
       );
     } on FirebaseAuthException catch (e) {
       String message = "Login failed. Please try again.";
-      if (e.code == "user-not-found") {
+      if (e.code == "user-not-found")
         message = "No account found with this email.";
-      } else if (e.code == "wrong-password") {
-        message = "Incorrect password.";
-      }
+      else if (e.code == "wrong-password") message = "Incorrect password.";
 
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(message)));
@@ -75,9 +73,8 @@ class _LoginPageState extends State<LoginPage> {
       );
     } on FirebaseAuthException catch (e) {
       String message = "Error: ${e.message}";
-      if (e.code == "user-not-found") {
+      if (e.code == "user-not-found")
         message = "No account found with this email.";
-      }
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(message)));
     }
@@ -95,155 +92,167 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: 50),
+      body: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF0A0A0A), Color(0xFFFF3D6A)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: Center(
+          child: SingleChildScrollView(
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 50),
 
-                // Header
-                Text(
-                  "Welcome Back",
-                  style: GoogleFonts.readexPro(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  "Login to your account",
-                  style: GoogleFonts.readexPro(
-                    fontSize: 16,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 40),
-
-                // Email Field
-                TextFormField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return "Please enter your email";
-                    }
-                    if (!RegExp(r'\S+@\S+\.\S+').hasMatch(value)) {
-                      return "Please enter a valid email";
-                    }
-                    return null;
-                  },
-                  decoration: InputDecoration(
-                    labelText: "Email",
-                    prefixIcon: const Icon(AppIcons.message),
-                    filled: true,
-                    fillColor: AppColors.cardBackground,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+                  // Header
+                  Text(
+                    "Welcome Back",
+                    style: GoogleFonts.readexPro(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(
-                        vertical: 20, horizontal: 16),
                   ),
-                ),
-                const SizedBox(height: 16),
-
-                // Password Field
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return "Please enter your password";
-                    }
-                    return null;
-                  },
-                  decoration: InputDecoration(
-                    labelText: "Password",
-                    prefixIcon: const Icon(AppIcons.lock),
-                    filled: true,
-                    fillColor: AppColors.cardBackground,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+                  const SizedBox(height: 10),
+                  Text(
+                    "Login to your account",
+                    style: GoogleFonts.readexPro(
+                      fontSize: 16,
+                      color: Colors.white70,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(
-                        vertical: 20, horizontal: 16),
-                    suffixIcon: GestureDetector(
-                      onTap: () =>
-                          setState(() => _obscurePassword = !_obscurePassword),
-                      child: Icon(
-                        _obscurePassword
-                            ? AppIcons.visibilityOff
-                            : AppIcons.visibility,
-                        color: AppColors.iconColor,
-                        size: 22,
+                  ),
+                  const SizedBox(height: 40),
+
+                  // Email Field
+                  TextFormField(
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (value) {
+                      if (value == null || value.isEmpty)
+                        return "Please enter your email";
+                      if (!RegExp(r'\S+@\S+\.\S+').hasMatch(value))
+                        return "Please enter a valid email";
+                      return null;
+                    },
+                    decoration: InputDecoration(
+                      labelText: "Email",
+                      labelStyle: const TextStyle(color: Colors.white70),
+                      prefixIcon:
+                          const Icon(AppIcons.message, color: Colors.white70),
+                      filled: true,
+                      fillColor: Colors.white.withOpacity(0.1),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                          vertical: 20, horizontal: 16),
+                    ),
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Password Field
+                  TextFormField(
+                    controller: _passwordController,
+                    obscureText: _obscurePassword,
+                    validator: (value) {
+                      if (value == null || value.isEmpty)
+                        return "Please enter your password";
+                      return null;
+                    },
+                    decoration: InputDecoration(
+                      labelText: "Password",
+                      labelStyle: const TextStyle(color: Colors.white70),
+                      prefixIcon:
+                          const Icon(AppIcons.lock, color: Colors.white70),
+                      filled: true,
+                      fillColor: Colors.white.withOpacity(0.1),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                          vertical: 20, horizontal: 16),
+                      suffixIcon: GestureDetector(
+                        onTap: () => setState(
+                            () => _obscurePassword = !_obscurePassword),
+                        child: Icon(
+                          _obscurePassword
+                              ? AppIcons.visibilityOff
+                              : AppIcons.visibility,
+                          color: Colors.white70,
+                          size: 22,
+                        ),
+                      ),
+                    ),
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Forgot Password
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: _resetPassword,
+                      child: Text(
+                        "Forgot Password?",
+                        style: GoogleFonts.readexPro(
+                          fontSize: 12,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 12),
+                  const SizedBox(height: 24),
 
-                // Forgot Password
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: _resetPassword,
-                    child: Text(
-                      "Forgot Password?",
-                      style: GoogleFonts.readexPro(
-                        fontSize: 12,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Login Button
-                _isLoading
-                    ? const CircularProgressIndicator()
-                    : SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton(
-                          onPressed: _login,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(40),
+                  // Login Button
+                  _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: ElevatedButton(
+                            onPressed: _login,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: Colors.pinkAccent,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(40),
+                              ),
                             ),
-                          ),
-                          child: Text(
-                            "Login",
-                            style: GoogleFonts.readexPro(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.buttonText,
+                            child: Text(
+                              "Login",
+                              style: GoogleFonts.readexPro(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
-                // Sign Up Redirect
-                TextButton(
-                  onPressed: _goToRegister,
-                  child: Text(
-                    "Don't have an account? Sign up",
-                    style: GoogleFonts.readexPro(
-                      fontSize: 12,
-                      color: AppColors.primary,
+                  // Sign Up Redirect
+                  TextButton(
+                    onPressed: _goToRegister,
+                    child: Text(
+                      "Don't have an account? Sign up",
+                      style: GoogleFonts.readexPro(
+                        fontSize: 12,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 40),
-              ],
+                  const SizedBox(height: 40),
+                ],
+              ),
             ),
           ),
         ),
