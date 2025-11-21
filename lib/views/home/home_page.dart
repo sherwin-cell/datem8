@@ -208,7 +208,7 @@ class _HomePageState extends State<HomePage> {
 
               // People You May Know
               Text(
-                "People You May Know",
+                "People May You Know",
                 style: GoogleFonts.readexPro(
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
@@ -225,7 +225,7 @@ class _HomePageState extends State<HomePage> {
                   if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                     return Center(
                       child: Text(
-                        "No users found 😕",
+                        "No users found ",
                         style: GoogleFonts.readexPro(fontSize: 14),
                       ),
                     );
@@ -244,7 +244,7 @@ class _HomePageState extends State<HomePage> {
                       child: Padding(
                         padding: const EdgeInsets.all(12.0),
                         child: Text(
-                          "No new people to suggest 😎",
+                          "No new people to suggest ",
                           style: GoogleFonts.readexPro(fontSize: 14),
                         ),
                       ),

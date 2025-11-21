@@ -45,6 +45,7 @@ class _FriendsRequestsAndPeopleTabState
   }
 
   Future<void> _confirmFriend(String fromUserId, String requestId) async {
+    final theme = Theme.of(context);
     try {
       await _friendsService.acceptFriendRequest(fromUserId);
 
@@ -71,17 +72,24 @@ class _FriendsRequestsAndPeopleTabState
         });
       }
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Friend added successfully 🎉")),
+        SnackBar(
+          content: Text("Friend added successfully 🎉",
+              style:
+                  GoogleFonts.readexPro(color: theme.colorScheme.onBackground)),
+          backgroundColor: theme.colorScheme.secondary.withOpacity(0.1),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     } catch (e) {
       debugPrint("❌ Error confirming friend: $e");
     }
   }
 
-  // Redesigned Friend Request Card
   Widget _buildFriendRequestCard(
       Map<String, dynamic> user, String reqId, String fromUserId) {
+    final theme = Theme.of(context);
     final fullName =
         "${user['firstName'] ?? ''} ${user['lastName'] ?? ''}".trim();
     final profilePic = user['profilePic'] ?? '';
@@ -89,23 +97,23 @@ class _FriendsRequestsAndPeopleTabState
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: theme.colorScheme.surface,
       elevation: 1,
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
-            // Profile Picture
             CircleAvatar(
               radius: 28,
-              backgroundColor: Colors.grey[300],
+              backgroundColor: theme.colorScheme.onSurface.withOpacity(0.1),
               backgroundImage:
                   profilePic.isNotEmpty ? NetworkImage(profilePic) : null,
               child: profilePic.isEmpty
-                  ? const Icon(Icons.person, size: 28, color: Colors.black38)
+                  ? Icon(Icons.person,
+                      size: 28, color: theme.colorScheme.onSurface)
                   : null,
             ),
             const SizedBox(width: 12),
-            // Name + Subtitle
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -113,22 +121,23 @@ class _FriendsRequestsAndPeopleTabState
                   Text(
                     fullName,
                     style: GoogleFonts.readexPro(
-                        fontSize: 16, fontWeight: FontWeight.w600),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     "sent you a friend request",
                     style: GoogleFonts.readexPro(
-                        fontSize: 13, color: Colors.black54),
+                        fontSize: 13,
+                        color: theme.colorScheme.onSurface.withOpacity(0.6)),
                   ),
                 ],
               ),
             ),
-            // Buttons
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Confirm Button
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green.withOpacity(0.2),
@@ -144,7 +153,6 @@ class _FriendsRequestsAndPeopleTabState
                       style: GoogleFonts.readexPro(fontSize: 12)),
                 ),
                 const SizedBox(width: 8),
-                // Delete Button
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red.withOpacity(0.2),
@@ -160,8 +168,16 @@ class _FriendsRequestsAndPeopleTabState
                         .collection('friend_requests')
                         .doc(reqId)
                         .delete();
+                    if (!mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Request deleted ❌")),
+                      SnackBar(
+                        content: Text("Request deleted ❌",
+                            style: GoogleFonts.readexPro(
+                                color: theme.colorScheme.onBackground)),
+                        backgroundColor:
+                            theme.colorScheme.secondary.withOpacity(0.1),
+                        behavior: SnackBarBehavior.floating,
+                      ),
                     );
                   },
                   child: Text("Delete",
@@ -175,8 +191,9 @@ class _FriendsRequestsAndPeopleTabState
     );
   }
 
-  // Suggested user card (same as before)
+  // Keep the box for suggested users
   Widget _buildSuggestedUserCard(Map<String, dynamic> user, String userId) {
+    final theme = Theme.of(context);
     final name = "${user['firstName'] ?? ''} ${user['lastName'] ?? ''}".trim();
     final profilePic = user['profilePic'] ?? '';
 
@@ -184,29 +201,37 @@ class _FriendsRequestsAndPeopleTabState
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.grey.withOpacity(0.1),
+        color: theme.colorScheme.surface.withOpacity(0.05),
         borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.onSurface.withOpacity(0.05),
+            blurRadius: 5,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: ListTile(
         leading: CircleAvatar(
           radius: 24,
-          backgroundColor: Colors.grey.withOpacity(0.3),
+          backgroundColor: theme.colorScheme.onSurface.withOpacity(0.1),
           backgroundImage:
               profilePic.isNotEmpty ? NetworkImage(profilePic) : null,
           child: profilePic.isEmpty
-              ? const Icon(Icons.person, size: 24, color: Colors.black45)
+              ? Icon(Icons.person, size: 24, color: theme.colorScheme.onSurface)
               : null,
         ),
         title: Text(
           name,
-          style:
-              GoogleFonts.readexPro(fontSize: 16, fontWeight: FontWeight.w600),
+          style: GoogleFonts.readexPro(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.onSurface),
         ),
         trailing: ElevatedButton(
           style: ElevatedButton.styleFrom(
-            backgroundColor:
-                const Color.fromARGB(255, 240, 240, 240).withOpacity(0.2),
-            foregroundColor: const Color.fromARGB(255, 17, 16, 16),
+            backgroundColor: theme.colorScheme.primary.withOpacity(0.15),
+            foregroundColor: theme.colorScheme.primary,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
@@ -214,9 +239,16 @@ class _FriendsRequestsAndPeopleTabState
           ),
           onPressed: () async {
             await _friendsService.sendFriendRequest(userId);
+            if (!mounted) return;
             setState(() => _hiddenUserIds.add(userId));
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text("Friend request sent to $name ✅")),
+              SnackBar(
+                content: Text("Friend request sent to $name ✅",
+                    style: GoogleFonts.readexPro(
+                        color: theme.colorScheme.onBackground)),
+                backgroundColor: theme.colorScheme.secondary.withOpacity(0.1),
+                behavior: SnackBarBehavior.floating,
+              ),
             );
           },
           child: Text("Add Friend", style: GoogleFonts.readexPro(fontSize: 12)),
@@ -227,6 +259,7 @@ class _FriendsRequestsAndPeopleTabState
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final myId = widget.currentUserId;
 
     return SingleChildScrollView(
@@ -240,7 +273,9 @@ class _FriendsRequestsAndPeopleTabState
             child: Text(
               "Friend Requests",
               style: GoogleFonts.readexPro(
-                  fontSize: 18, fontWeight: FontWeight.bold),
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onBackground),
             ),
           ),
           StreamBuilder<QuerySnapshot>(
@@ -252,11 +287,13 @@ class _FriendsRequestsAndPeopleTabState
               if (!snapshot.hasData) return const SizedBox();
               final requests = snapshot.data!.docs;
               if (requests.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                return Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Text(
                     "No requests right now",
-                    style: TextStyle(color: Colors.black54),
+                    style: GoogleFonts.readexPro(
+                        color: theme.colorScheme.onBackground.withOpacity(0.6)),
                   ),
                 );
               }
@@ -289,9 +326,11 @@ class _FriendsRequestsAndPeopleTabState
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
-              "People You May Know",
+              "People May You Know",
               style: GoogleFonts.readexPro(
-                  fontSize: 18, fontWeight: FontWeight.bold),
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onBackground),
             ),
           ),
           StreamBuilder<List<Map<String, dynamic>>>(
@@ -303,11 +342,13 @@ class _FriendsRequestsAndPeopleTabState
                   .toList();
 
               if (people.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                return Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Text(
                     "No suggestions right now",
-                    style: TextStyle(color: Colors.black54),
+                    style: GoogleFonts.readexPro(
+                        color: theme.colorScheme.onBackground.withOpacity(0.6)),
                   ),
                 );
               }

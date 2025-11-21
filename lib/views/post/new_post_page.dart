@@ -1,3 +1,4 @@
+// new_post_page.dart
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -5,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:datem8/services/cloudinary_service.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class NewPostPage extends StatefulWidget {
   final CloudinaryService cloudinaryService;
@@ -51,22 +53,27 @@ class _NewPostPageState extends State<NewPostPage> {
   }
 
   Future<void> _showImageSourceDialog() async {
+    final theme = Theme.of(context);
     showModalBottomSheet(
       context: context,
+      backgroundColor: theme.colorScheme.background,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
       builder: (context) => SafeArea(
         child: Wrap(
           children: [
             ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: const Text('Gallery'),
+              leading: Icon(Icons.photo_library, color: theme.iconTheme.color),
+              title: Text('Gallery', style: theme.textTheme.bodyMedium),
               onTap: () {
                 Navigator.of(context).pop();
                 _pickImagesFromGallery();
               },
             ),
             ListTile(
-              leading: const Icon(Icons.camera_alt),
-              title: const Text('Camera'),
+              leading: Icon(Icons.camera_alt, color: theme.iconTheme.color),
+              title: Text('Camera', style: theme.textTheme.bodyMedium),
               onTap: () {
                 Navigator.of(context).pop();
                 _pickImageFromCamera();
@@ -82,14 +89,12 @@ class _NewPostPageState extends State<NewPostPage> {
     try {
       final pickedFiles = await _picker.pickMultiImage();
       if (!mounted || pickedFiles.isEmpty) return;
-      setState(() {
-        _images.addAll(pickedFiles.map((file) => File(file.path)));
-      });
+      setState(
+          () => _images.addAll(pickedFiles.map((file) => File(file.path))));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error picking images: $e")),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Error picking images: $e")));
     }
   }
 
@@ -97,46 +102,45 @@ class _NewPostPageState extends State<NewPostPage> {
     try {
       final pickedFile = await _picker.pickImage(source: ImageSource.camera);
       if (!mounted || pickedFile == null) return;
-      setState(() {
-        _images.add(File(pickedFile.path));
-      });
+      setState(() => _images.add(File(pickedFile.path)));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error taking photo: $e")),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Error taking photo: $e")));
     }
   }
 
   Future<void> _confirmDiscard() async {
+    final theme = Theme.of(context);
     final discard = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Discard Post?"),
-        content: const Text("Are you sure you want to discard this post?"),
+        backgroundColor: theme.colorScheme.background,
+        title: Text("Discard Post?", style: theme.textTheme.titleMedium),
+        content: Text(
+          "Are you sure you want to discard this post?",
+          style: theme.textTheme.bodyMedium?.copyWith(color: theme.hintColor),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text("No"),
+            child: Text("No", style: TextStyle(color: Colors.pinkAccent)),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text("Yes"),
+            child: const Text("Yes", style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
     );
 
-    if (discard == true) {
-      Navigator.of(context).pop();
-    }
+    if (discard == true) Navigator.of(context).pop();
   }
 
   Future<void> _submitPost() async {
     if (_images.isEmpty && _captionController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please add an image or caption")),
-      );
+          const SnackBar(content: Text("Please add an image or caption")));
       return;
     }
 
@@ -174,30 +178,28 @@ class _NewPostPageState extends State<NewPostPage> {
       Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to post: $e")),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Failed to post: $e")));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Widget _buildImagePreview() {
+    final theme = Theme.of(context);
     if (_images.isEmpty) {
       return GestureDetector(
         onTap: _showImageSourceDialog,
         child: Container(
           height: 240,
           decoration: BoxDecoration(
-            color: Colors.grey[200],
+            color: theme.colorScheme.onBackground.withOpacity(0.1),
             borderRadius: BorderRadius.circular(16),
-            boxShadow: const [
-              BoxShadow(
-                  color: Colors.black12, blurRadius: 6, offset: Offset(0, 3))
-            ],
           ),
-          child: const Center(
-            child: Icon(Icons.add_a_photo, size: 50, color: Colors.black45),
+          child: Center(
+            child: Icon(Icons.add_a_photo,
+                size: 50,
+                color: theme.colorScheme.onBackground.withOpacity(0.5)),
           ),
         ),
       );
@@ -223,6 +225,8 @@ class _NewPostPageState extends State<NewPostPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: WillPopScope(
@@ -231,11 +235,15 @@ class _NewPostPageState extends State<NewPostPage> {
           return false;
         },
         child: Scaffold(
+          backgroundColor: theme.colorScheme.background,
           appBar: AppBar(
-            title: const Text("New Post"),
-            elevation: 1,
-            backgroundColor: Colors.white,
-            foregroundColor: Colors.black87,
+            title: Text("New Post",
+                style: GoogleFonts.readexPro(
+                    color: theme.colorScheme.onBackground,
+                    fontWeight: FontWeight.bold)),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            foregroundColor: theme.colorScheme.onBackground,
             actions: [
               TextButton(
                 onPressed: _confirmDiscard,
@@ -252,20 +260,22 @@ class _NewPostPageState extends State<NewPostPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Only caption input now
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        vertical: 10, horizontal: 14),
+                        vertical: 14, horizontal: 16),
                     decoration: BoxDecoration(
-                      color: Colors.grey[100],
+                      color: theme.colorScheme.onBackground.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: TextField(
                       controller: _captionController,
                       maxLines: null,
-                      style: const TextStyle(fontSize: 16),
+                      style: GoogleFonts.readexPro(
+                          color: theme.colorScheme.onBackground, fontSize: 16),
                       decoration: InputDecoration(
                         hintText: _currentPrompt,
+                        hintStyle: GoogleFonts.readexPro(
+                            color: theme.hintColor, fontSize: 16),
                         border: InputBorder.none,
                       ),
                     ),
@@ -274,22 +284,24 @@ class _NewPostPageState extends State<NewPostPage> {
                   _buildImagePreview(),
                   const SizedBox(height: 24),
                   _isLoading
-                      ? const Center(child: CircularProgressIndicator())
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                              color: Color.fromARGB(255, 18, 16, 17)))
                       : SizedBox(
                           height: 50,
                           child: ElevatedButton(
                             onPressed: _submitPost,
                             style: ElevatedButton.styleFrom(
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14)),
+                                  borderRadius: BorderRadius.circular(40)),
                               backgroundColor:
-                                  const Color.fromARGB(255, 165, 172, 193),
+                                  const Color.fromARGB(255, 225, 217, 223),
                               elevation: 2,
                             ),
-                            child: const Text(
+                            child: Text(
                               "Post",
-                              style: TextStyle(
-                                  fontSize: 18, fontWeight: FontWeight.w600),
+                              style: GoogleFonts.readexPro(
+                                  fontSize: 18, fontWeight: FontWeight.bold),
                             ),
                           ),
                         ),

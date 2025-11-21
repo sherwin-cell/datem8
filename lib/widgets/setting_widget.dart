@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:datem8/views/profile/edit_profile.dart';
 import 'package:datem8/services/cloudinary_service.dart';
 import 'package:datem8/widgets/darkmode.dart';
@@ -16,19 +17,31 @@ class SettingsIconButton extends StatelessWidget {
   });
 
   void _showSnackBar(BuildContext context, String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    final theme = Theme.of(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: GoogleFonts.inter(
+            color: theme.colorScheme.onBackground,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        backgroundColor: theme.colorScheme.secondary.withOpacity(0.1),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   Future<void> _sendPasswordResetEmail(BuildContext context) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user?.email == null) {
-      _showSnackBar(context, "No email associated with this account.");
+      _showSnackBar(context, "No email linked to this account.");
       return;
     }
     try {
       await FirebaseAuth.instance.sendPasswordResetEmail(email: user!.email!);
-      _showSnackBar(context, "Password reset email sent! Check your inbox.");
+      _showSnackBar(context, "Password reset email sent. Check your inbox!");
     } on FirebaseAuthException catch (e) {
       _showSnackBar(context, "Error: ${e.message}");
     }
@@ -38,87 +51,98 @@ class SettingsIconButton extends StatelessWidget {
     final Uri emailUri = Uri(
       scheme: 'mailto',
       path: 'support@datem8.app',
-      query: 'subject=DateM8 App Support&body=Hi DateM8 Team,',
+      query: 'subject=DateM8 Support&body=Hello DateM8 Team,',
     );
     if (await canLaunchUrl(emailUri)) await launchUrl(emailUri);
   }
 
-  Future<void> _confirmLogout(BuildContext context) async {
-    final shouldLogout = await showDialog<bool>(
+  Future<bool?> _showConfirmationDialog(
+    BuildContext context, {
+    required String title,
+    required String content,
+    String confirmText = 'Confirm',
+    Color confirmColor = Colors.red,
+  }) {
+    final theme = Theme.of(context);
+    return showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
+        backgroundColor: theme.colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Confirm Logout'),
-        content: const Text('Are you sure you want to log out?'),
+        title: Text(title,
+            style: GoogleFonts.inter(
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface)),
+        content: Text(content,
+            style: GoogleFonts.inter(color: theme.colorScheme.onSurface)),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(_, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(_, false),
+            child: Text('Cancel',
+                style: GoogleFonts.inter(color: theme.colorScheme.primary)),
+          ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: confirmColor),
             onPressed: () => Navigator.pop(_, true),
-            child: const Text('Log Out'),
+            child: Text(confirmText,
+                style: GoogleFonts.inter(color: Colors.white)),
           ),
         ],
       ),
     );
+  }
 
-    if (shouldLogout == true) {
-      await FirebaseAuth.instance.signOut();
-      if (!context.mounted) return;
-      Navigator.of(context).pushNamedAndRemoveUntil('/welcome', (_) => false);
-    }
+  Future<String?> _showPasswordDialog(BuildContext context) async {
+    final theme = Theme.of(context);
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: theme.colorScheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text("Verify Password",
+            style: GoogleFonts.inter(
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface)),
+        content: TextField(
+          controller: controller,
+          obscureText: true,
+          style: TextStyle(color: theme.colorScheme.onSurface),
+          decoration: InputDecoration(
+            labelText: "Enter your password",
+            labelStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(_, null),
+            child: Text("Cancel",
+                style: GoogleFonts.inter(color: theme.colorScheme.primary)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(_, controller.text),
+            child:
+                Text("Confirm", style: GoogleFonts.inter(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _deleteAccount(BuildContext context) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user?.email == null) return;
 
-    final confirmDelete = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Delete Account'),
-        content: const Text(
-            'Are you sure you want to delete your account? This action cannot be undone.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(_, false),
-              child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(_, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirm = await _showConfirmationDialog(
+      context,
+      title: "Delete Account",
+      content:
+          "Deleting your account is permanent and cannot be undone. Are you sure?",
     );
 
-    if (confirmDelete != true) return;
+    if (confirm != true) return;
 
-    final password = await showDialog<String>(
-      context: context,
-      builder: (_) {
-        final controller = TextEditingController();
-        return AlertDialog(
-          title: const Text("Confirm Password"),
-          content: TextField(
-            controller: controller,
-            obscureText: true,
-            decoration: const InputDecoration(labelText: "Enter your password"),
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(_, null),
-                child: const Text("Cancel")),
-            ElevatedButton(
-                onPressed: () => Navigator.pop(_, controller.text),
-                child: const Text("Confirm")),
-          ],
-        );
-      },
-    );
-
+    final password = await _showPasswordDialog(context);
     if (password == null || password.isEmpty) return;
 
     try {
@@ -136,70 +160,105 @@ class SettingsIconButton extends StatelessWidget {
   Future<void> _showAccountDialog(BuildContext context) async {
     final user = FirebaseAuth.instance.currentUser;
     final email = user?.email ?? "No email found";
+    final theme = Theme.of(context);
 
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
+        backgroundColor: theme.colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Account'),
+        title: Text('Account Details',
+            style: GoogleFonts.inter(
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Highlighted email box
             Container(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
-                color: Colors.deepPurple.shade50,
-                borderRadius: BorderRadius.circular(12),
+                color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(16),
               ),
-              child: ListTile(
-                leading: Image.asset('assets/icons/envelope.png',
-                    width: 20, height: 20),
-                title: Text(email,
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w500)),
+              child: Row(
+                children: [
+                  Icon(Icons.email,
+                      color: theme.colorScheme.onPrimaryContainer),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      email,
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
-            const Divider(),
+            // Options
             ListTile(
-              leading:
-                  Image.asset('assets/icons/draw.png', width: 20, height: 20),
-              title: const Text('Edit Profile'),
+              leading: Icon(Icons.edit, color: theme.colorScheme.onSurface),
+              title: Text('Edit Profile',
+                  style: GoogleFonts.inter(color: theme.colorScheme.onSurface)),
               onTap: () {
                 Navigator.pop(_);
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => EditProfilePage(
-                        cloudinaryService: cloudinaryService, userId: userId),
-                  ),
+                      builder: (_) => EditProfilePage(
+                          cloudinaryService: cloudinaryService,
+                          userId: userId)),
                 );
               },
             ),
             ListTile(
               leading:
-                  Image.asset('assets/icons/shield.png', width: 20, height: 20),
-              title: const Text('Change Password'),
+                  Icon(Icons.lock_reset, color: theme.colorScheme.onSurface),
+              title: Text('Reset Password',
+                  style: GoogleFonts.inter(color: theme.colorScheme.onSurface)),
               onTap: () async {
                 Navigator.pop(_);
                 await _sendPasswordResetEmail(context);
               },
             ),
             ListTile(
-              leading:
-                  Image.asset('assets/icons/delete.png', width: 20, height: 20),
-              title: const Text('Delete Account',
-                  style: TextStyle(color: Colors.red)),
+              leading: Icon(Icons.delete, color: Colors.red),
+              title: Text('Delete Account',
+                  style: GoogleFonts.inter(color: Colors.red)),
               onTap: () => _deleteAccount(context),
             ),
           ],
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(_), child: const Text('Close'))
+            onPressed: () => Navigator.pop(_),
+            child: Text('Close',
+                style: GoogleFonts.inter(color: theme.colorScheme.primary)),
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _confirmLogout(BuildContext context) async {
+    final shouldLogout = await _showConfirmationDialog(
+      context,
+      title: 'Log Out',
+      content: 'Do you want to log out of your account?',
+      confirmText: 'Log Out',
+    );
+
+    if (shouldLogout == true) {
+      await FirebaseAuth.instance.signOut();
+      if (!context.mounted) return;
+      Navigator.of(context).pushNamedAndRemoveUntil('/welcome', (_) => false);
+    }
   }
 
   @override
@@ -214,7 +273,7 @@ class SettingsIconButton extends StatelessWidget {
             'assets/icons/menu.png',
             width: 20,
             height: 20,
-            color: isDark ? Colors.white : Colors.black87, // dynamic color
+            color: isDark ? Colors.white : Colors.black87,
           ),
           onSelected: (value) async {
             switch (value) {
@@ -222,62 +281,16 @@ class SettingsIconButton extends StatelessWidget {
                 _showAccountDialog(context);
                 break;
               case 'about':
-                await showDialog(
-                  context: context,
-                  builder: (_) => AlertDialog(
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
-                    title: const Text('About DateM8 ❤️'),
-                    content: const Text(
-                      "DateM8 is a modern matchmaking app designed to help students connect "
-                      "with like-minded individuals based on their department, interests, and goals.\n\n"
-                      "Version: 1.0.0\nDeveloped by Team DateM8 💜",
-                    ),
-                    actions: [
-                      TextButton(
-                          onPressed: () => Navigator.pop(_),
-                          child: const Text('Close'))
-                    ],
-                  ),
-                );
+                await _showSimpleDialog(context, 'About DateM8',
+                    "DateM8 is a student-focused matchmaking app that helps you connect with like-minded individuals.\n\nVersion: 1.0.0\nTeam DateM8 💜");
                 break;
               case 'terms':
-                await showDialog(
-                  context: context,
-                  builder: (_) => AlertDialog(
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
-                    title: const Text("Terms of Service"),
-                    content: const Text(
-                      "By using DateM8, you agree to respect others, keep your information accurate, "
-                      "and follow our community guidelines.",
-                    ),
-                    actions: [
-                      TextButton(
-                          onPressed: () => Navigator.pop(_),
-                          child: const Text('Close'))
-                    ],
-                  ),
-                );
+                await _showSimpleDialog(context, 'Terms of Service',
+                    "By using DateM8, you agree to follow our community guidelines and provide accurate information.");
                 break;
               case 'privacy':
-                await showDialog(
-                  context: context,
-                  builder: (_) => AlertDialog(
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
-                    title: const Text("Privacy Policy"),
-                    content: const Text(
-                      "DateM8 respects your privacy. We collect minimal data and never share your information "
-                      "without your consent.",
-                    ),
-                    actions: [
-                      TextButton(
-                          onPressed: () => Navigator.pop(_),
-                          child: const Text('Close'))
-                    ],
-                  ),
-                );
+                await _showSimpleDialog(context, 'Privacy Policy',
+                    "We collect minimal data and never share your information without consent.");
                 break;
               case 'contact':
                 _contactSupport();
@@ -288,50 +301,16 @@ class SettingsIconButton extends StatelessWidget {
             }
           },
           itemBuilder: (context) => [
-            PopupMenuItem(
-              value: 'account',
-              child: ListTile(
-                leading: Image.asset('assets/icons/user-account.png',
-                    width: 20, height: 20),
-                title: const Text('Account'),
-              ),
-            ),
-            PopupMenuItem(
-              value: 'about',
-              child: ListTile(
-                leading:
-                    Image.asset('assets/icons/info.png', width: 20, height: 20),
-                title: const Text('About'),
-              ),
-            ),
-            PopupMenuItem(
-              value: 'terms',
-              child: ListTile(
-                leading: Image.asset('assets/icons/terms-of-use.png',
-                    width: 20, height: 20),
-                title: const Text('Terms of Service'),
-              ),
-            ),
-            PopupMenuItem(
-              value: 'privacy',
-              child: ListTile(
-                leading: Image.asset('assets/icons/shield.png',
-                    width: 20, height: 20),
-                title: const Text('Privacy Policy'),
-              ),
-            ),
-            PopupMenuItem(
-              value: 'contact',
-              child: ListTile(
-                leading: Image.asset(
-                  'assets/icons/customer-support.png',
-                  color: const Color.fromARGB(255, 188, 13, 204),
-                  width: 20,
-                  height: 20,
-                ),
-                title: const Text('Contact Support'),
-              ),
-            ),
+            _buildMenuItem(
+                'account', 'Account', 'assets/icons/user-account.png'),
+            _buildMenuItem('about', 'About', 'assets/icons/info.png'),
+            _buildMenuItem(
+                'terms', 'Terms of Service', 'assets/icons/terms-of-use.png'),
+            _buildMenuItem(
+                'privacy', 'Privacy Policy', 'assets/icons/shield.png'),
+            _buildMenuItem('contact', 'Contact Support',
+                'assets/icons/customer-support.png',
+                iconColor: const Color.fromARGB(255, 188, 13, 204)),
             const PopupMenuDivider(),
             PopupMenuItem(
               value: 'darkmode',
@@ -344,7 +323,7 @@ class SettingsIconButton extends StatelessWidget {
                     value: isDark,
                     onChanged: (_) {
                       DarkModeController.toggleTheme();
-                      Navigator.pop(context); // close menu to rebuild it
+                      Navigator.pop(context);
                     },
                   ),
                   Icon(Icons.dark_mode,
@@ -353,18 +332,49 @@ class SettingsIconButton extends StatelessWidget {
               ),
             ),
             const PopupMenuDivider(),
-            PopupMenuItem(
-              value: 'logout',
-              child: ListTile(
-                leading:
-                    Image.asset('assets/icons/exit.png', width: 20, height: 20),
-                title:
-                    const Text('Logout', style: TextStyle(color: Colors.red)),
-              ),
-            ),
+            _buildMenuItem('logout', 'Log Out', 'assets/icons/exit.png',
+                isRed: true),
           ],
         );
       },
+    );
+  }
+
+  PopupMenuItem<String> _buildMenuItem(
+      String value, String title, String iconPath,
+      {Color? iconColor, bool isRed = false}) {
+    return PopupMenuItem(
+      value: value,
+      child: ListTile(
+        leading: Image.asset(iconPath, width: 20, height: 20, color: iconColor),
+        title: Text(title,
+            style: GoogleFonts.inter(color: isRed ? Colors.red : null)),
+      ),
+    );
+  }
+
+  Future<void> _showSimpleDialog(
+      BuildContext context, String title, String content) {
+    final theme = Theme.of(context);
+    return showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: theme.colorScheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(title,
+            style: GoogleFonts.inter(
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface)),
+        content: Text(content,
+            style: GoogleFonts.inter(color: theme.colorScheme.onSurface)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(_),
+            child: Text('Close',
+                style: GoogleFonts.inter(color: theme.colorScheme.primary)),
+          ),
+        ],
+      ),
     );
   }
 }

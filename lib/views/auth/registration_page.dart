@@ -1,7 +1,6 @@
 // registration_page.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
@@ -19,29 +18,37 @@ class RegistrationPage extends StatefulWidget {
 }
 
 class _RegistrationPageState extends State<RegistrationPage> {
+  // Controllers
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _ageController = TextEditingController();
-  final _courseController = TextEditingController();
-  final _departmentController = TextEditingController();
   final _interestsController = TextEditingController();
   final _bioController = TextEditingController();
 
+  // Dropdowns
+  String? _selectedDepartment;
+  String? _selectedCourse;
+
+  // File & options
   File? _profileImage;
-  bool _isLoading = false;
   String? _gender;
   String? _interestedIn;
+  bool _isLoading = false;
+
+  // Department → Courses mapping
+  final Map<String, List<String>> departmentCourses = {
+    "CBE": ["BSBA", "BSEntrep"],
+    "CCS": ["BSIT", "ACT"],
+    "CTE": ["BEED", "BSED"],
+  };
 
   Future<void> _pickImage() async {
-    final pickedFile =
-        await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (pickedFile != null)
-      setState(() => _profileImage = File(pickedFile.path));
+    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (picked != null) setState(() => _profileImage = File(picked.path));
   }
 
-  void _showSnack(String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+  void _showSnack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   Future<void> _saveProfile() async {
@@ -49,27 +56,29 @@ class _RegistrationPageState extends State<RegistrationPage> {
     if (user == null) return;
 
     final age = int.tryParse(_ageController.text.trim());
-    if (_firstNameController.text.trim().isEmpty ||
-        _lastNameController.text.trim().isEmpty ||
+    if (_firstNameController.text.isEmpty ||
+        _lastNameController.text.isEmpty ||
         age == null ||
         _gender == null ||
-        _interestedIn == null) {
+        _interestedIn == null ||
+        _selectedDepartment == null ||
+        _selectedCourse == null) {
       _showSnack("Please complete all required fields");
       return;
     }
-
     if (age < 18) {
-      _showSnack("You must be 18 years old or older to register");
+      _showSnack("You must be at least 18 to register");
       return;
     }
 
     setState(() => _isLoading = true);
-
     try {
       String? imageUrl;
       if (_profileImage != null) {
-        imageUrl = await widget.cloudinaryService
-            .uploadImage(_profileImage!, folder: "profiles");
+        imageUrl = await widget.cloudinaryService.uploadImage(
+          _profileImage!,
+          folder: "profiles",
+        );
       }
 
       await FirebaseFirestore.instance.collection("users").doc(user.uid).set({
@@ -78,8 +87,8 @@ class _RegistrationPageState extends State<RegistrationPage> {
         "age": age,
         "gender": _gender,
         "interestedIn": _interestedIn,
-        "course": _courseController.text.trim(),
-        "department": _departmentController.text.trim(),
+        "department": _selectedDepartment,
+        "course": _selectedCourse,
         "interests": _interestsController.text
             .trim()
             .split(',')
@@ -102,27 +111,26 @@ class _RegistrationPageState extends State<RegistrationPage> {
     } catch (e) {
       _showSnack("Error saving profile: $e");
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  Widget _buildOptionButton(String label, String value, bool isForInterested) {
-    final isSelected =
-        isForInterested ? _interestedIn == value : _gender == value;
+  Widget _optionButton(String label, String value, bool isInterest) {
+    final isSelected = isInterest ? _interestedIn == value : _gender == value;
     return GestureDetector(
       onTap: () {
         setState(() {
-          if (isForInterested) {
+          if (isInterest)
             _interestedIn = value;
-          } else {
+          else
             _gender = value;
-          }
         });
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 18),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.pinkAccent : Colors.white.withOpacity(0.2),
+          color:
+              isSelected ? Colors.pinkAccent : Colors.white.withOpacity(0.18),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
@@ -136,23 +144,93 @@ class _RegistrationPageState extends State<RegistrationPage> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label,
-      {int maxLines = 1, TextInputType? keyboardType}) {
+  Widget _textField(TextEditingController controller, String label,
+      {TextInputType inputType = TextInputType.text, int maxLines = 1}) {
     return TextField(
       controller: controller,
+      keyboardType: inputType,
       maxLines: maxLines,
-      keyboardType: keyboardType,
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(color: Colors.white70),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.1),
+        fillColor: Colors.white.withOpacity(0.12),
         border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
         contentPadding:
-            const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      ),
+    );
+  }
+
+  Widget _dropdownContainer(Widget child) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: child,
+    );
+  }
+
+  Widget _departmentDropdown() {
+    return _dropdownContainer(
+      DropdownButtonFormField<String>(
+        value: _selectedDepartment,
+        items: departmentCourses.keys
+            .map((dept) => DropdownMenuItem(
+                  value: dept,
+                  child:
+                      Text(dept, style: const TextStyle(color: Colors.black)),
+                ))
+            .toList(),
+        onChanged: (value) {
+          setState(() {
+            _selectedDepartment = value;
+            _selectedCourse = null;
+          });
+        },
+        decoration: const InputDecoration(
+          labelText: "Department",
+          labelStyle: TextStyle(color: Colors.white70),
+          border: InputBorder.none,
+        ),
+        style: const TextStyle(color: Colors.black),
+        dropdownColor: Colors.white,
+        isExpanded: true,
+      ),
+    );
+  }
+
+  Widget _courseDropdown() {
+    List<String> courses = _selectedDepartment != null
+        ? departmentCourses[_selectedDepartment!]!
+        : [];
+
+    return _dropdownContainer(
+      DropdownButtonFormField<String>(
+        value: courses.contains(_selectedCourse) ? _selectedCourse : null,
+        items: courses
+            .map((course) => DropdownMenuItem(
+                  value: course,
+                  child:
+                      Text(course, style: const TextStyle(color: Colors.black)),
+                ))
+            .toList(),
+        onChanged: (value) => setState(() => _selectedCourse = value),
+        decoration: const InputDecoration(
+          labelText: "Course",
+          labelStyle: TextStyle(color: Colors.white70),
+          border: InputBorder.none,
+        ),
+        style: const TextStyle(color: Colors.black),
+        dropdownColor: Colors.white,
+        isExpanded: true,
       ),
     );
   }
@@ -162,7 +240,6 @@ class _RegistrationPageState extends State<RegistrationPage> {
     return Scaffold(
       body: Container(
         width: double.infinity,
-        height: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -177,102 +254,102 @@ class _RegistrationPageState extends State<RegistrationPage> {
               Text(
                 "Complete Your Profile",
                 style: GoogleFonts.readexPro(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white),
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 20),
               GestureDetector(
                 onTap: _pickImage,
                 child: CircleAvatar(
-                  radius: 50,
+                  radius: 55,
                   backgroundImage:
                       _profileImage != null ? FileImage(_profileImage!) : null,
                   backgroundColor: Colors.white.withOpacity(0.2),
                   child: _profileImage == null
                       ? const Icon(Icons.camera_alt,
-                          size: 40, color: Colors.white70)
+                          color: Colors.white70, size: 40)
                       : null,
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 25),
+
+              // Basic Info
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(
                   children: [
-                    _buildTextField(_firstNameController, "First Name"),
+                    _textField(_firstNameController, "First Name"),
                     const SizedBox(height: 10),
-                    _buildTextField(_lastNameController, "Last Name"),
+                    _textField(_lastNameController, "Last Name"),
                     const SizedBox(height: 10),
-                    _buildTextField(_ageController, "Age (18+)",
-                        keyboardType: TextInputType.number),
+                    _textField(_ageController, "Age (18+)",
+                        inputType: TextInputType.number),
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 25),
 
-              // Gender Section
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              // Gender
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  "Gender: ${_gender ?? 'Not selected'}",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  Text(
-                    "Gender: ${_gender ?? 'Not selected'}",
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildOptionButton("Female", "Female", false),
-                      _buildOptionButton("Male", "Male", false),
-                      _buildOptionButton("Custom", "Custom", false),
-                    ],
-                  ),
+                  _optionButton("Female", "Female", false),
+                  _optionButton("Male", "Male", false),
+                  _optionButton("Custom", "Custom", false),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 25),
 
-              // Course and Department
-              _buildTextField(_courseController, "Course"),
+              // Department & Course Dropdown
+              _departmentDropdown(),
               const SizedBox(height: 10),
-              _buildTextField(_departmentController, "Department"),
-              const SizedBox(height: 20),
+              _courseDropdown(),
+              const SizedBox(height: 25),
 
-              // Interested In Section
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              // Interested In
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  "Interested In: ${_interestedIn ?? 'Not selected'}",
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  Text(
-                    "Interested In: ${_interestedIn ?? 'Not selected'}",
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildOptionButton("Female", "Female", true),
-                      _buildOptionButton("Male", "Male", true),
-                      _buildOptionButton("All", "All", true),
-                    ],
-                  ),
+                  _optionButton("Female", "Female", true),
+                  _optionButton("Male", "Male", true),
+                  _optionButton("All", "All", true),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 25),
 
-              _buildTextField(
-                  _interestsController, "Interests/Hobbies (comma separated)"),
+              _textField(_interestsController,
+                  "Interests / Hobbies (comma separated)"),
               const SizedBox(height: 10),
-              _buildTextField(_bioController, "Bio/About Me", maxLines: 3),
+              _textField(_bioController, "Bio / About Me", maxLines: 3),
               const SizedBox(height: 30),
 
               _isLoading
@@ -286,12 +363,15 @@ class _RegistrationPageState extends State<RegistrationPage> {
                           backgroundColor: Colors.white,
                           foregroundColor: Colors.pinkAccent,
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(40)),
+                            borderRadius: BorderRadius.circular(40),
+                          ),
                         ),
                         child: Text(
                           "Save Profile",
                           style: GoogleFonts.readexPro(
-                              fontSize: 16, fontWeight: FontWeight.bold),
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),

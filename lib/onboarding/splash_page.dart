@@ -46,44 +46,64 @@ class _SplashPageState extends State<SplashPage>
     await Future.delayed(const Duration(milliseconds: 500));
     if (!mounted) return;
 
-    User? user = FirebaseAuth.instance.currentUser;
+    try {
+      User? user = FirebaseAuth.instance.currentUser;
+      debugPrint('🔍 Splash: currentUser = $user');
 
-    if (user != null) {
-      // Reload user to get latest info
-      await user.reload();
-      user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        // Reload user to get latest info
+        await user.reload();
+        user = FirebaseAuth.instance.currentUser;
+        debugPrint('✅ User reloaded: emailVerified = ${user?.emailVerified}');
 
-      if (user != null && user.emailVerified) {
-        // Verified → MainScreen
+        if (user != null && user.emailVerified) {
+          // Verified → MainScreen
+          debugPrint('➡️ Navigating to MainScreen');
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) =>
+                  MainScreen(cloudinaryService: widget.cloudinaryService),
+            ),
+          );
+        } else if (user != null) {
+          // Not verified → VerificationPage
+          debugPrint('➡️ Navigating to VerificationPage');
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => VerificationPage(
+                cloudinaryService: widget.cloudinaryService,
+              ),
+            ),
+          );
+        }
+      } else {
+        // New user → WelcomePage
+        debugPrint('➡️ Navigating to WelcomePage');
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
             builder: (_) =>
-                MainScreen(cloudinaryService: widget.cloudinaryService),
-          ),
-        );
-      } else if (user != null) {
-        // Not verified → VerificationPage
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => VerificationPage(
-              cloudinaryService: widget.cloudinaryService,
-            ),
+                WelcomePage(cloudinaryService: widget.cloudinaryService),
           ),
         );
       }
-    } else {
-      // New user → WelcomePage
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) =>
-              WelcomePage(cloudinaryService: widget.cloudinaryService),
-        ),
-      );
+    } catch (e) {
+      debugPrint('❌ Error in splash navigation: $e');
+      // Fallback: go to WelcomePage
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                WelcomePage(cloudinaryService: widget.cloudinaryService),
+          ),
+        );
+      }
     }
   }
+// ...existing code...
 
   @override
   void dispose() {
