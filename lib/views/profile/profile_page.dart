@@ -33,6 +33,7 @@ class ProfilePage extends StatelessWidget {
         return Scaffold(
           backgroundColor: backgroundColor,
           appBar: AppBar(
+            automaticallyImplyLeading: false, // removes back arrow
             title: Text(
               "Profile",
               style: GoogleFonts.readexPro(
@@ -95,12 +96,15 @@ class ProfilePage extends StatelessWidget {
                   const SizedBox(height: 20),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Text(
-                      "My Posts",
-                      style: GoogleFonts.readexPro(
+                    child: Center(
+                      child: Text(
+                        "My Posts",
+                        style: GoogleFonts.readexPro(
                           color: textColor,
                           fontSize: 20,
-                          fontWeight: FontWeight.bold),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -377,7 +381,6 @@ class ProfilePage extends StatelessWidget {
   }
 }
 
-// ---------------- PostPageView ----------------
 class _PostPageView extends StatefulWidget {
   final List<String> images;
   const _PostPageView({required this.images});

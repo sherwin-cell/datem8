@@ -118,20 +118,24 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
   Future<bool> _checkBlockStatus(String friendId, String chatId) async {
     final currentUserId = _currentUserId;
     if (currentUserId == null) return true;
+
     final blockedByMe = await _chatActions.isBlocked(
       currentUserId: currentUserId,
       chatId: chatId,
     );
+
     final blockedByFriend = await _chatActions.isBlocked(
       currentUserId: friendId,
       chatId: chatId,
     );
+
     return blockedByMe || blockedByFriend;
   }
 
   Future<void> _showUnblockDialog(
       String friendId, String chatId, String name) async {
     if (!mounted) return;
+
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -227,8 +231,17 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("Messages", style: GoogleFonts.readexPro()),
+        title: Text(
+          "Messages",
+          style: GoogleFonts.readexPro(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).textTheme.bodyLarge?.color,
+          ),
+        ),
         automaticallyImplyLeading: false,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
       body: Column(
         children: [
@@ -238,7 +251,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: "Search",
+                hintText: "Search friends or chats",
                 hintStyle: GoogleFonts.readexPro(),
                 prefixIcon: const Icon(Icons.search),
                 border: const OutlineInputBorder(
@@ -261,7 +274,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                 final friendIds = snapshot.data!.docs.map((e) => e.id).toList();
                 if (friendIds.isEmpty)
                   return Center(
-                      child: Text("No friends yet",
+                      child: Text("No friends added yet",
                           style: GoogleFonts.readexPro()));
 
                 return ListView.builder(

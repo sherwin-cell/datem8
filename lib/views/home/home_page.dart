@@ -89,9 +89,8 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor:
-            theme.appBarTheme.backgroundColor ?? theme.colorScheme.surface,
-        elevation: 2,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         automaticallyImplyLeading: false,
         title: StreamBuilder<DocumentSnapshot>(
           stream: FirebaseFirestore.instance
@@ -102,7 +101,7 @@ class _HomePageState extends State<HomePage> {
             String greeting = "Hello 👋";
             Widget avatar = CircleAvatar(
               radius: 18,
-              backgroundColor: theme.colorScheme.primary,
+              backgroundColor: Theme.of(context).colorScheme.primary,
               child: const Icon(Icons.person, color: Colors.white, size: 18),
             );
 
@@ -129,8 +128,8 @@ class _HomePageState extends State<HomePage> {
                     greeting,
                     style: GoogleFonts.readexPro(
                       fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.primary,
-                      fontSize: 18,
+                      fontSize: 22, // updated font size
+                      color: Theme.of(context).textTheme.bodyLarge?.color,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),

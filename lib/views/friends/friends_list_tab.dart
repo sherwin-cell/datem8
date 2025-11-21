@@ -35,10 +35,7 @@ class FriendsListTab extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
           itemCount: docs.length,
           itemBuilder: (context, i) {
-            final friendDoc = docs[i].data() as Map<String, dynamic>? ?? {};
             final friendId = docs[i].id;
-            final isMutual =
-                friendDoc.containsKey('mutual') && friendDoc['mutual'] == true;
 
             return FutureBuilder<DocumentSnapshot>(
               future: FirebaseFirestore.instance
@@ -86,22 +83,20 @@ class FriendsListTab extends StatelessWidget {
                                 fontSize: 16, fontWeight: FontWeight.w600),
                           ),
                         ),
-                        // Status Badge
+                        // Status Badge (always "Friend")
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
-                            color: isMutual
-                                ? Colors.green.withOpacity(0.2)
-                                : Colors.orange.withOpacity(0.2),
+                            color: Colors.green.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            isMutual ? "Friend" : "Pending",
+                            "Friend",
                             style: GoogleFonts.readexPro(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: isMutual ? Colors.green : Colors.orange,
+                              color: Colors.green,
                             ),
                           ),
                         ),
