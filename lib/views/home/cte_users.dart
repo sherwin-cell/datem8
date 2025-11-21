@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class CTEPage extends StatelessWidget {
   const CTEPage({super.key});
@@ -13,7 +14,7 @@ class CTEPage extends StatelessWidget {
       backgroundColor: theme.scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
-          // 🔹 AppBar with Hero image + gradient overlay
+          // SliverAppBar with Hero image + gradient overlay
           SliverAppBar(
             pinned: true,
             expandedHeight: 220,
@@ -28,12 +29,11 @@ class CTEPage extends StatelessWidget {
                       fit: BoxFit.cover,
                     ),
                   ),
-                  // 🔹 Gradient overlay (purple)
                   Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          Colors.black.withOpacity(0.6),
+                          Colors.black.withOpacity(0.5),
                           Colors.transparent,
                           const Color(0xCC7E57C2),
                         ],
@@ -42,7 +42,6 @@ class CTEPage extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // 🔹 Title & subtitle
                   Positioned(
                     left: 20,
                     bottom: 20,
@@ -56,19 +55,11 @@ class CTEPage extends StatelessWidget {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
+                            children: [
+                              const SizedBox(height: 4),
                               Text(
-                                "College of Teacher Education",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                "Meet our CTE students below 👇",
-                                style: TextStyle(
+                                "Meet our CTE students below ",
+                                style: GoogleFonts.readexPro(
                                   color: Colors.white70,
                                   fontSize: 14,
                                 ),
@@ -85,7 +76,7 @@ class CTEPage extends StatelessWidget {
             backgroundColor: const Color(0xFF7E57C2),
           ),
 
-          // 🔹 User list
+          // Firestore users list
           SliverToBoxAdapter(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
@@ -101,12 +92,15 @@ class CTEPage extends StatelessWidget {
                 }
 
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.all(40),
+                  return Padding(
+                    padding: const EdgeInsets.all(40),
                     child: Center(
                       child: Text(
                         "No CTE users found 😕",
-                        style: TextStyle(color: Colors.grey),
+                        style: GoogleFonts.readexPro(
+                          color: Colors.grey,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                   );
@@ -117,7 +111,8 @@ class CTEPage extends StatelessWidget {
                 return ListView.builder(
                   physics: const NeverScrollableScrollPhysics(),
                   shrinkWrap: true,
-                  padding: const EdgeInsets.all(16),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   itemCount: users.length,
                   itemBuilder: (context, index) {
                     final user = users[index].data() as Map<String, dynamic>;
@@ -128,21 +123,22 @@ class CTEPage extends StatelessWidget {
 
                     return Card(
                       color: isDark ? const Color(0xFF2C2C2E) : Colors.white,
-                      margin: const EdgeInsets.symmetric(vertical: 8),
+                      margin: const EdgeInsets.symmetric(vertical: 6),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                      elevation: 2,
+                      elevation: 3,
+                      shadowColor: Colors.black26,
                       child: ListTile(
                         contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
+                            horizontal: 16, vertical: 10),
                         leading: profilePic.isNotEmpty
                             ? CircleAvatar(
+                                radius: 26,
                                 backgroundImage: NetworkImage(profilePic),
-                                radius: 25,
                               )
                             : CircleAvatar(
-                                radius: 25,
+                                radius: 26,
                                 backgroundColor: isDark
                                     ? const Color(0xFF9575CD)
                                     : const Color(0xFFB39DDB),
@@ -151,7 +147,7 @@ class CTEPage extends StatelessWidget {
                               ),
                         title: Text(
                           "$firstName $lastName",
-                          style: TextStyle(
+                          style: GoogleFonts.readexPro(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
                             color: isDark ? Colors.white : Colors.black87,
@@ -159,7 +155,8 @@ class CTEPage extends StatelessWidget {
                         ),
                         subtitle: Text(
                           course,
-                          style: TextStyle(
+                          style: GoogleFonts.readexPro(
+                            fontSize: 14,
                             color: isDark ? Colors.white70 : Colors.black54,
                           ),
                         ),

@@ -76,15 +76,12 @@ class _VerificationPageState extends State<VerificationPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Optional: logo
                 Image.asset(
                   'assets/images/logog.png',
                   width: 120,
                   height: 120,
                 ),
                 const SizedBox(height: 20),
-
-                // Title
                 Text(
                   "Verify Your Email",
                   style: GoogleFonts.readexPro(
@@ -94,8 +91,6 @@ class _VerificationPageState extends State<VerificationPage> {
                   ),
                 ),
                 const SizedBox(height: 12),
-
-                // Instructions
                 Text(
                   "A verification email has been sent.\n"
                   "Please check your inbox and verify your email to continue.",
@@ -106,8 +101,6 @@ class _VerificationPageState extends State<VerificationPage> {
                   ),
                 ),
                 const SizedBox(height: 30),
-
-                // Continue Button
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -132,8 +125,6 @@ class _VerificationPageState extends State<VerificationPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-
-                // Resend Verification Button
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -156,8 +147,6 @@ class _VerificationPageState extends State<VerificationPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-
-                // Back to Sign Up
                 TextButton(
                   onPressed: () => Navigator.pop(context),
                   child: Text(

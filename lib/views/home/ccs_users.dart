@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class CCSPage extends StatelessWidget {
   const CCSPage({super.key});
@@ -13,7 +14,7 @@ class CCSPage extends StatelessWidget {
       backgroundColor: theme.scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
-          // 🔹 AppBar with Hero image + gradient overlay
+          // AppBar with hero image + gradient overlay
           SliverAppBar(
             pinned: true,
             expandedHeight: 220,
@@ -21,7 +22,6 @@ class CCSPage extends StatelessWidget {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // 🔹 Hero department image
                   Hero(
                     tag: "CCS",
                     child: Image.asset(
@@ -29,13 +29,11 @@ class CCSPage extends StatelessWidget {
                       fit: BoxFit.cover,
                     ),
                   ),
-
-                  // 🔹 Gradient overlay for clarity
                   Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          Colors.black.withOpacity(0.6),
+                          Colors.black.withOpacity(0.5),
                           Colors.transparent,
                           const Color(0xCC1976D2),
                         ],
@@ -44,34 +42,25 @@ class CCSPage extends StatelessWidget {
                       ),
                     ),
                   ),
-
-                  // 🔹 Department title and subtitle
-                  const Positioned(
+                  Positioned(
                     left: 20,
                     bottom: 20,
                     right: 20,
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Icon(Icons.computer, color: Colors.white, size: 36),
-                        SizedBox(width: 10),
+                        const Icon(Icons.computer,
+                            color: Colors.white, size: 36),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              const SizedBox(height: 4),
                               Text(
-                                "College of Computer Studies",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                "Meet our CCS students below 👇",
-                                style: TextStyle(
+                                "Meet our CCS students below ",
+                                style: GoogleFonts.readexPro(
                                   color: Colors.white70,
                                   fontSize: 14,
                                 ),
@@ -88,7 +77,7 @@ class CCSPage extends StatelessWidget {
             backgroundColor: const Color(0xFF1976D2),
           ),
 
-          // 🔹 Firestore users list for CCS department
+          // Firestore users list
           SliverToBoxAdapter(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
@@ -104,12 +93,15 @@ class CCSPage extends StatelessWidget {
                 }
 
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.all(40),
+                  return Padding(
+                    padding: const EdgeInsets.all(40),
                     child: Center(
                       child: Text(
                         "No CCS users found 😕",
-                        style: TextStyle(color: Colors.grey),
+                        style: GoogleFonts.readexPro(
+                          color: Colors.grey,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                   );
@@ -120,7 +112,8 @@ class CCSPage extends StatelessWidget {
                 return ListView.builder(
                   physics: const NeverScrollableScrollPhysics(),
                   shrinkWrap: true,
-                  padding: const EdgeInsets.all(16),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   itemCount: users.length,
                   itemBuilder: (context, index) {
                     final user = users[index].data() as Map<String, dynamic>;
@@ -129,46 +122,43 @@ class CCSPage extends StatelessWidget {
                     final course = user['course'] ?? '';
                     final profilePic = user['profilePic'] ?? '';
 
-                    return AnimatedScale(
-                      scale: 1.0,
-                      duration: const Duration(milliseconds: 1000),
-                      curve: Curves.easeInOut,
-                      child: Card(
-                        color: isDark ? const Color(0xFF2C2C2E) : Colors.white,
-                        margin: const EdgeInsets.symmetric(vertical: 8),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 2,
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
-                          leading: profilePic.isNotEmpty
-                              ? CircleAvatar(
-                                  backgroundImage: NetworkImage(profilePic),
-                                  radius: 25,
-                                )
-                              : CircleAvatar(
-                                  radius: 25,
-                                  backgroundColor: isDark
-                                      ? const Color(0xFF64B5F6)
-                                      : const Color(0xFF90CAF9),
-                                  child: const Icon(Icons.person,
-                                      color: Colors.white),
-                                ),
-                          title: Text(
-                            "$firstName $lastName",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: isDark ? Colors.white : Colors.black87,
-                            ),
+                    return Card(
+                      color: isDark ? const Color(0xFF2C2C2E) : Colors.white,
+                      margin: const EdgeInsets.symmetric(vertical: 6),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      elevation: 3,
+                      shadowColor: Colors.black26,
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 10),
+                        leading: profilePic.isNotEmpty
+                            ? CircleAvatar(
+                                radius: 26,
+                                backgroundImage: NetworkImage(profilePic),
+                              )
+                            : CircleAvatar(
+                                radius: 26,
+                                backgroundColor: isDark
+                                    ? const Color(0xFF64B5F6)
+                                    : const Color(0xFF90CAF9),
+                                child: const Icon(Icons.person,
+                                    color: Colors.white),
+                              ),
+                        title: Text(
+                          "$firstName $lastName",
+                          style: GoogleFonts.readexPro(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: isDark ? Colors.white : Colors.black87,
                           ),
-                          subtitle: Text(
-                            course,
-                            style: TextStyle(
-                              color: isDark ? Colors.white70 : Colors.black54,
-                            ),
+                        ),
+                        subtitle: Text(
+                          course,
+                          style: GoogleFonts.readexPro(
+                            fontSize: 14,
+                            color: isDark ? Colors.white70 : Colors.black54,
                           ),
                         ),
                       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class CBEPage extends StatelessWidget {
   const CBEPage({super.key});
@@ -13,7 +14,7 @@ class CBEPage extends StatelessWidget {
       backgroundColor: theme.scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
-          // 🔹 AppBar with Hero image + gradient overlay
+          // AppBar with hero image + gradient overlay
           SliverAppBar(
             pinned: true,
             expandedHeight: 220,
@@ -21,7 +22,6 @@ class CBEPage extends StatelessWidget {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // ✅ Hero animation
                   Hero(
                     tag: "CBE",
                     child: Image.asset(
@@ -29,39 +29,38 @@ class CBEPage extends StatelessWidget {
                       fit: BoxFit.cover,
                     ),
                   ),
-                  // 🔹 Gradient overlay
                   Container(
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          Color(0x99000000),
-                          Color(0x00000000),
-                          Color(0xCCF57C00),
+                          Colors.black.withOpacity(0.6),
+                          Colors.transparent,
+                          const Color(0xCC42A5F5),
                         ],
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                       ),
                     ),
                   ),
-                  const Positioned(
+                  Positioned(
                     left: 20,
                     bottom: 20,
                     right: 20,
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Icon(Icons.business_center,
+                        const Icon(Icons.business,
                             color: Colors.white, size: 36),
-                        SizedBox(width: 10),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              SizedBox(height: 4),
+                              const SizedBox(height: 4),
                               Text(
-                                "Meet our CBE students below 👇",
-                                style: TextStyle(
+                                "Meet our CBE students below ",
+                                style: GoogleFonts.readexPro(
                                   color: Colors.white70,
                                   fontSize: 14,
                                 ),
@@ -75,10 +74,10 @@ class CBEPage extends StatelessWidget {
                 ],
               ),
             ),
-            backgroundColor: const Color(0xFFF57C00),
+            backgroundColor: const Color(0xFF42A5F5),
           ),
 
-          // 🔹 Firestore users list for CBE department
+          // Firestore users list
           SliverToBoxAdapter(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
@@ -94,12 +93,15 @@ class CBEPage extends StatelessWidget {
                 }
 
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.all(40),
+                  return Padding(
+                    padding: const EdgeInsets.all(40),
                     child: Center(
                       child: Text(
                         "No CBE users found 😕",
-                        style: TextStyle(color: Colors.grey),
+                        style: GoogleFonts.readexPro(
+                          color: Colors.grey,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                   );
@@ -119,46 +121,42 @@ class CBEPage extends StatelessWidget {
                     final course = user['course'] ?? '';
                     final profilePic = user['profilePic'] ?? '';
 
-                    return AnimatedScale(
-                      scale: 1.0,
-                      duration: const Duration(milliseconds: 1000),
-                      curve: Curves.easeInOut,
-                      child: Card(
-                        color: isDark ? const Color(0xFF2C2C2E) : Colors.white,
-                        margin: const EdgeInsets.symmetric(vertical: 8),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 2,
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
-                          leading: profilePic.isNotEmpty
-                              ? CircleAvatar(
-                                  backgroundImage: NetworkImage(profilePic),
-                                  radius: 25,
-                                )
-                              : CircleAvatar(
-                                  radius: 25,
-                                  backgroundColor: isDark
-                                      ? const Color(0xFFB5731A)
-                                      : const Color.fromARGB(255, 61, 38, 3),
-                                  child: const Icon(Icons.person,
-                                      color: Colors.white),
-                                ),
-                          title: Text(
-                            "$firstName $lastName",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: isDark ? Colors.white : Colors.black87,
-                            ),
+                    return Card(
+                      color: isDark ? const Color(0xFF2C2C2E) : Colors.white,
+                      margin: const EdgeInsets.symmetric(vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 2,
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        leading: profilePic.isNotEmpty
+                            ? CircleAvatar(
+                                backgroundImage: NetworkImage(profilePic),
+                                radius: 25,
+                              )
+                            : CircleAvatar(
+                                radius: 25,
+                                backgroundColor: isDark
+                                    ? const Color(0xFF64B5F6)
+                                    : const Color(0xFFBBDEFB),
+                                child: const Icon(Icons.person,
+                                    color: Colors.white),
+                              ),
+                        title: Text(
+                          "$firstName $lastName",
+                          style: GoogleFonts.readexPro(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: isDark ? Colors.white : Colors.black87,
                           ),
-                          subtitle: Text(
-                            course,
-                            style: TextStyle(
-                              color: isDark ? Colors.white70 : Colors.black54,
-                            ),
+                        ),
+                        subtitle: Text(
+                          course,
+                          style: GoogleFonts.readexPro(
+                            fontSize: 14,
+                            color: isDark ? Colors.white70 : Colors.black54,
                           ),
                         ),
                       ),

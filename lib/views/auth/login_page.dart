@@ -1,3 +1,4 @@
+// login_page.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:datem8/services/cloudinary_service.dart';
@@ -5,6 +6,7 @@ import 'package:datem8/widgets/main_screen.dart';
 import 'package:datem8/views/auth/signup_page.dart';
 import 'package:datem8/helper/app.icons.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:datem8/views/auth/verification_page.dart';
 
 class LoginPage extends StatefulWidget {
   final CloudinaryService cloudinaryService;
@@ -30,20 +32,37 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _isLoading = true);
 
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
+      final userCredential =
+          await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
 
-      if (!mounted) return;
+      final user = userCredential.user;
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) =>
-              MainScreen(cloudinaryService: widget.cloudinaryService),
-        ),
-      );
+      if (user != null) {
+        if (user.emailVerified) {
+          // Verified → go to main screen
+          if (!mounted) return;
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) =>
+                  MainScreen(cloudinaryService: widget.cloudinaryService),
+            ),
+          );
+        } else {
+          // Not verified → go to VerificationPage (Stateful)
+          if (!mounted) return;
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) =>
+                  VerificationPage(cloudinaryService: widget.cloudinaryService),
+            ),
+          );
+        }
+      }
     } on FirebaseAuthException catch (e) {
       String message = "Login failed. Please try again.";
       if (e.code == "user-not-found")
@@ -110,8 +129,6 @@ class _LoginPageState extends State<LoginPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const SizedBox(height: 50),
-
-                  // Header
                   Text(
                     "Welcome Back",
                     style: GoogleFonts.readexPro(

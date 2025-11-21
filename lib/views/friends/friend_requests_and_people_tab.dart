@@ -2,14 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:datem8/services/friends_service.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class FriendsRequestsAndPeopleTab extends StatefulWidget {
   final String currentUserId;
 
-  const FriendsRequestsAndPeopleTab({
-    super.key,
-    required this.currentUserId,
-  });
+  const FriendsRequestsAndPeopleTab({super.key, required this.currentUserId});
 
   @override
   State<FriendsRequestsAndPeopleTab> createState() =>
@@ -30,7 +28,6 @@ class _FriendsRequestsAndPeopleTabState
     _loadHiddenUserIds();
   }
 
-  /// 🔹 Load all users to hide from "People You May Know"
   Future<void> _loadHiddenUserIds() async {
     final sent = await _firestore
         .collection('friend_requests')
@@ -47,12 +44,10 @@ class _FriendsRequestsAndPeopleTabState
     });
   }
 
-  /// 🔹 Confirm friend and auto-create chat in Realtime DB
   Future<void> _confirmFriend(String fromUserId, String requestId) async {
     try {
       await _friendsService.acceptFriendRequest(fromUserId);
 
-      // Create chat
       final currentUserId = widget.currentUserId;
       final chatId = currentUserId.hashCode <= fromUserId.hashCode
           ? '$currentUserId-$fromUserId'
@@ -84,39 +79,95 @@ class _FriendsRequestsAndPeopleTabState
     }
   }
 
-  /// 🔹 Friend request card
+  // Redesigned Friend Request Card
   Widget _buildFriendRequestCard(
       Map<String, dynamic> user, String reqId, String fromUserId) {
-    final name = "${user['firstName'] ?? ''} ${user['lastName'] ?? ''}".trim();
+    final fullName =
+        "${user['firstName'] ?? ''} ${user['lastName'] ?? ''}".trim();
     final profilePic = user['profilePic'] ?? '';
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundImage:
-              profilePic.isNotEmpty ? NetworkImage(profilePic) : null,
-          child: profilePic.isEmpty ? const Icon(Icons.person) : null,
-        ),
-        title: Text(name),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 1,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
           children: [
-            TextButton(
-              onPressed: () => _confirmFriend(fromUserId, reqId),
-              child: const Text("Confirm"),
+            // Profile Picture
+            CircleAvatar(
+              radius: 28,
+              backgroundColor: Colors.grey[300],
+              backgroundImage:
+                  profilePic.isNotEmpty ? NetworkImage(profilePic) : null,
+              child: profilePic.isEmpty
+                  ? const Icon(Icons.person, size: 28, color: Colors.black38)
+                  : null,
             ),
-            TextButton(
-              onPressed: () async {
-                await _firestore
-                    .collection('friend_requests')
-                    .doc(reqId)
-                    .delete();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Request deleted ❌")),
-                );
-              },
-              child: const Text("Delete"),
+            const SizedBox(width: 12),
+            // Name + Subtitle
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    fullName,
+                    style: GoogleFonts.readexPro(
+                        fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "sent you a friend request",
+                    style: GoogleFonts.readexPro(
+                        fontSize: 13, color: Colors.black54),
+                  ),
+                ],
+              ),
+            ),
+            // Buttons
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Confirm Button
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green.withOpacity(0.2),
+                    foregroundColor: Colors.green,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  ),
+                  onPressed: () => _confirmFriend(fromUserId, reqId),
+                  child: Text("Confirm",
+                      style: GoogleFonts.readexPro(fontSize: 12)),
+                ),
+                const SizedBox(width: 8),
+                // Delete Button
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red.withOpacity(0.2),
+                    foregroundColor: Colors.red,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  ),
+                  onPressed: () async {
+                    await _firestore
+                        .collection('friend_requests')
+                        .doc(reqId)
+                        .delete();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Request deleted ❌")),
+                    );
+                  },
+                  child: Text("Delete",
+                      style: GoogleFonts.readexPro(fontSize: 12)),
+                ),
+              ],
             ),
           ],
         ),
@@ -124,21 +175,43 @@ class _FriendsRequestsAndPeopleTabState
     );
   }
 
-  /// 🔹 Suggested user card
+  // Suggested user card (same as before)
   Widget _buildSuggestedUserCard(Map<String, dynamic> user, String userId) {
     final name = "${user['firstName'] ?? ''} ${user['lastName'] ?? ''}".trim();
     final profilePic = user['profilePic'] ?? '';
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: ListTile(
         leading: CircleAvatar(
+          radius: 24,
+          backgroundColor: Colors.grey.withOpacity(0.3),
           backgroundImage:
               profilePic.isNotEmpty ? NetworkImage(profilePic) : null,
-          child: profilePic.isEmpty ? const Icon(Icons.person) : null,
+          child: profilePic.isEmpty
+              ? const Icon(Icons.person, size: 24, color: Colors.black45)
+              : null,
         ),
-        title: Text(name),
+        title: Text(
+          name,
+          style:
+              GoogleFonts.readexPro(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
         trailing: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor:
+                const Color.fromARGB(255, 240, 240, 240).withOpacity(0.2),
+            foregroundColor: const Color.fromARGB(255, 17, 16, 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          ),
           onPressed: () async {
             await _friendsService.sendFriendRequest(userId);
             setState(() => _hiddenUserIds.add(userId));
@@ -146,7 +219,7 @@ class _FriendsRequestsAndPeopleTabState
               SnackBar(content: Text("Friend request sent to $name ✅")),
             );
           },
-          child: const Text("Add Friend"),
+          child: Text("Add Friend", style: GoogleFonts.readexPro(fontSize: 12)),
         ),
       ),
     );
@@ -157,15 +230,17 @@ class _FriendsRequestsAndPeopleTabState
     final myId = widget.currentUserId;
 
     return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 🔹 Friend Requests Section
-          const Padding(
-            padding: EdgeInsets.all(12),
+          // Friend Requests Section
+          Padding(
+            padding: const EdgeInsets.all(16),
             child: Text(
               "Friend Requests",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: GoogleFonts.readexPro(
+                  fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ),
           StreamBuilder<QuerySnapshot>(
@@ -178,8 +253,11 @@ class _FriendsRequestsAndPeopleTabState
               final requests = snapshot.data!.docs;
               if (requests.isEmpty) {
                 return const Padding(
-                  padding: EdgeInsets.all(12),
-                  child: Text("No requests right now"),
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Text(
+                    "No requests right now",
+                    style: TextStyle(color: Colors.black54),
+                  ),
                 );
               }
 
@@ -207,12 +285,13 @@ class _FriendsRequestsAndPeopleTabState
             },
           ),
 
-          // 🔹 People You May Know Section
-          const Padding(
-            padding: EdgeInsets.all(12),
+          // People You May Know Section
+          Padding(
+            padding: const EdgeInsets.all(16),
             child: Text(
               "People You May Know",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: GoogleFonts.readexPro(
+                  fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ),
           StreamBuilder<List<Map<String, dynamic>>>(
@@ -225,8 +304,11 @@ class _FriendsRequestsAndPeopleTabState
 
               if (people.isEmpty) {
                 return const Padding(
-                  padding: EdgeInsets.all(12),
-                  child: Text("No suggestions right now"),
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Text(
+                    "No suggestions right now",
+                    style: TextStyle(color: Colors.black54),
+                  ),
                 );
               }
 

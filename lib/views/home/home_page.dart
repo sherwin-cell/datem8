@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:datem8/services/cloudinary_service.dart';
 import 'package:datem8/widgets/profile_modal.dart';
 import 'package:datem8/widgets/setting_widget.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 // Department pages
 import 'package:datem8/views/home/cbe_users.dart';
@@ -43,19 +44,16 @@ class _HomePageState extends State<HomePage> {
     final uid = currentUser!.uid;
     final firestore = FirebaseFirestore.instance;
 
-    // Load friends
     final friendSnap =
         await firestore.collection('friends').doc(uid).collection('list').get();
     _friends.addAll(friendSnap.docs.map((e) => e.id));
 
-    // Sent requests
     final sentSnap = await firestore
         .collection('friend_requests')
         .where('from', isEqualTo: uid)
         .get();
     _sentRequests.addAll(sentSnap.docs.map((e) => e['to'] as String));
 
-    // Received requests
     final recvSnap = await firestore
         .collection('friend_requests')
         .where('to', isEqualTo: uid)
@@ -80,7 +78,6 @@ class _HomePageState extends State<HomePage> {
       default:
         return;
     }
-
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
 
@@ -130,9 +127,10 @@ class _HomePageState extends State<HomePage> {
                 Expanded(
                   child: Text(
                     greeting,
-                    style: theme.textTheme.titleMedium?.copyWith(
+                    style: GoogleFonts.readexPro(
                       fontWeight: FontWeight.bold,
                       color: theme.colorScheme.primary,
+                      fontSize: 18,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -146,6 +144,7 @@ class _HomePageState extends State<HomePage> {
             cloudinaryService: widget.cloudinaryService,
             userId: currentUser!.uid,
           ),
+          const SizedBox(width: 12),
         ],
       ),
       body: RefreshIndicator(
@@ -159,8 +158,9 @@ class _HomePageState extends State<HomePage> {
               // Departments Section
               Text(
                 "Departments",
-                style: theme.textTheme.titleLarge?.copyWith(
+                style: GoogleFonts.readexPro(
                   fontWeight: FontWeight.bold,
+                  fontSize: 20,
                 ),
               ),
               const SizedBox(height: 12),
@@ -210,11 +210,12 @@ class _HomePageState extends State<HomePage> {
               // People You May Know
               Text(
                 "People You May Know",
-                style: theme.textTheme.titleMedium?.copyWith(
+                style: GoogleFonts.readexPro(
                   fontWeight: FontWeight.bold,
+                  fontSize: 18,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               StreamBuilder<QuerySnapshot>(
                 stream:
                     FirebaseFirestore.instance.collection('users').snapshots(),
@@ -226,7 +227,7 @@ class _HomePageState extends State<HomePage> {
                     return Center(
                       child: Text(
                         "No users found 😕",
-                        style: theme.textTheme.bodyMedium,
+                        style: GoogleFonts.readexPro(fontSize: 14),
                       ),
                     );
                   }
@@ -245,16 +246,17 @@ class _HomePageState extends State<HomePage> {
                         padding: const EdgeInsets.all(12.0),
                         child: Text(
                           "No new people to suggest 😎",
-                          style: theme.textTheme.bodyMedium,
+                          style: GoogleFonts.readexPro(fontSize: 14),
                         ),
                       ),
                     );
                   }
 
-                  return ListView.builder(
+                  return ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: users.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (context, index) {
                       final data = users[index].data() as Map<String, dynamic>;
                       final name =
@@ -270,6 +272,8 @@ class _HomePageState extends State<HomePage> {
                         ),
                         elevation: 2,
                         child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                              vertical: 8, horizontal: 12),
                           leading: CircleAvatar(
                             radius: 25,
                             backgroundImage: profilePic.isNotEmpty
@@ -284,12 +288,15 @@ class _HomePageState extends State<HomePage> {
                           ),
                           title: Text(
                             name,
-                            style: theme.textTheme.bodyLarge?.copyWith(
+                            style: GoogleFonts.readexPro(
                               fontWeight: FontWeight.bold,
+                              fontSize: 16,
                             ),
                           ),
-                          subtitle:
-                              Text(course, style: theme.textTheme.bodyMedium),
+                          subtitle: Text(
+                            course,
+                            style: GoogleFonts.readexPro(fontSize: 14),
+                          ),
                           onTap: () => showProfileModal(
                             context,
                             userData: {...data, 'uid': users[index].id},

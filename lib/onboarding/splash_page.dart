@@ -4,6 +4,7 @@ import 'package:datem8/onboarding/welcome_page.dart';
 import 'package:datem8/widgets/main_screen.dart';
 import 'package:datem8/services/cloudinary_service.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:datem8/views/auth/verification_page.dart';
 
 class SplashPage extends StatefulWidget {
   final CloudinaryService cloudinaryService;
@@ -16,9 +17,9 @@ class SplashPage extends StatefulWidget {
 
 class _SplashPageState extends State<SplashPage>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _fadeAnimation;
-  late Animation<double> _scaleAnimation;
+  late final AnimationController _controller;
+  late final Animation<double> _fadeAnimation;
+  late final Animation<double> _scaleAnimation;
 
   @override
   void initState() {
@@ -38,22 +39,50 @@ class _SplashPageState extends State<SplashPage>
       CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
     );
 
-    _controller.forward().whenComplete(() => _navigate());
+    _controller.forward().whenComplete(_navigate);
   }
 
   Future<void> _navigate() async {
     await Future.delayed(const Duration(milliseconds: 500));
     if (!mounted) return;
 
-    final user = FirebaseAuth.instance.currentUser;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => user != null
-            ? MainScreen(cloudinaryService: widget.cloudinaryService)
-            : WelcomePage(cloudinaryService: widget.cloudinaryService),
-      ),
-    );
+    User? user = FirebaseAuth.instance.currentUser;
+
+    if (user != null) {
+      // Reload user to get latest info
+      await user.reload();
+      user = FirebaseAuth.instance.currentUser;
+
+      if (user != null && user.emailVerified) {
+        // Verified → MainScreen
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                MainScreen(cloudinaryService: widget.cloudinaryService),
+          ),
+        );
+      } else if (user != null) {
+        // Not verified → VerificationPage
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => VerificationPage(
+              cloudinaryService: widget.cloudinaryService,
+            ),
+          ),
+        );
+      }
+    } else {
+      // New user → WelcomePage
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              WelcomePage(cloudinaryService: widget.cloudinaryService),
+        ),
+      );
+    }
   }
 
   @override
@@ -90,11 +119,11 @@ class _SplashPageState extends State<SplashPage>
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    "DateM8 ",
+                    "DateM8",
                     style: GoogleFonts.readexPro(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
-                      color: const Color.fromARGB(255, 225, 204, 204),
+                      color: Color.fromARGB(255, 225, 204, 204),
                       letterSpacing: 1.3,
                     ),
                   ),

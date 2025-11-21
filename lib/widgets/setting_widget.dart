@@ -204,135 +204,138 @@ class SettingsIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      icon: Image.asset('assets/icons/menu.png',
-          width: 20, height: 20, color: Colors.black87),
-      onSelected: (value) {
-        switch (value) {
-          case 'account':
-            _showAccountDialog(context);
-            break;
-          case 'about':
-            showDialog(
-              context: context,
-              builder: (_) => AlertDialog(
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
-                title: const Text('About DateM8 ❤️'),
-                content: const Text(
-                  "DateM8 is a modern matchmaking app designed to help students connect "
-                  "with like-minded individuals based on their department, interests, and goals.\n\n"
-                  "Version: 1.0.0\nDeveloped by Team DateM8 💜",
-                ),
-                actions: [
-                  TextButton(
-                      onPressed: () => Navigator.pop(_),
-                      child: const Text('Close'))
-                ],
-              ),
-            );
-            break;
-          case 'terms':
-            showDialog(
-              context: context,
-              builder: (_) => AlertDialog(
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
-                title: const Text("Terms of Service"),
-                content: const Text(
-                  "By using DateM8, you agree to respect others, keep your information accurate, "
-                  "and follow our community guidelines.",
-                ),
-                actions: [
-                  TextButton(
-                      onPressed: () => Navigator.pop(_),
-                      child: const Text('Close'))
-                ],
-              ),
-            );
-            break;
-          case 'privacy':
-            showDialog(
-              context: context,
-              builder: (_) => AlertDialog(
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
-                title: const Text("Privacy Policy"),
-                content: const Text(
-                  "DateM8 respects your privacy. We collect minimal data and never share your information "
-                  "without your consent.",
-                ),
-                actions: [
-                  TextButton(
-                      onPressed: () => Navigator.pop(_),
-                      child: const Text('Close'))
-                ],
-              ),
-            );
-            break;
-          case 'contact':
-            _contactSupport();
-            break;
-          case 'logout':
-            _confirmLogout(context);
-            break;
-        }
-      },
-      itemBuilder: (context) => [
-        PopupMenuItem(
-          value: 'account',
-          child: ListTile(
-            leading: Image.asset('assets/icons/user-account.png',
-                width: 20, height: 20),
-            title: const Text('Account'),
-          ),
-        ),
-        PopupMenuItem(
-          value: 'about',
-          child: ListTile(
-            leading:
-                Image.asset('assets/icons/info.png', width: 20, height: 20),
-            title: const Text('About'),
-          ),
-        ),
-        PopupMenuItem(
-          value: 'terms',
-          child: ListTile(
-            leading: Image.asset('assets/icons/terms-of-use.png',
-                width: 20, height: 20),
-            title: const Text('Terms of Service'),
-          ),
-        ),
-        PopupMenuItem(
-          value: 'privacy',
-          child: ListTile(
-            leading:
-                Image.asset('assets/icons/shield.png', width: 20, height: 20),
-            title: const Text('Privacy Policy'),
-          ),
-        ),
-        PopupMenuItem(
-          value: 'contact',
-          child: ListTile(
-            leading: Image.asset(
-              'assets/icons/customer-support.png',
-              color: const Color.fromARGB(255, 188, 13, 204),
-              width: 20,
-              height: 20,
-            ),
-            title: const Text('Contact Support'),
-          ),
-        ),
-        const PopupMenuDivider(),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: DarkModeController.themeModeNotifier,
+      builder: (context, themeMode, _) {
+        final isDark = themeMode == ThemeMode.dark;
 
-        // **Dark Mode Toggle with Switch**
-        PopupMenuItem(
-          value: 'darkmode',
-          child: ValueListenableBuilder<ThemeMode>(
-            valueListenable: DarkModeController.themeModeNotifier,
-            builder: (context, themeMode, _) {
-              final isDark = themeMode == ThemeMode.dark;
-              return Row(
+        return PopupMenuButton<String>(
+          icon: Image.asset(
+            'assets/icons/menu.png',
+            width: 20,
+            height: 20,
+            color: isDark ? Colors.white : Colors.black87, // dynamic color
+          ),
+          onSelected: (value) async {
+            switch (value) {
+              case 'account':
+                _showAccountDialog(context);
+                break;
+              case 'about':
+                await showDialog(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                    title: const Text('About DateM8 ❤️'),
+                    content: const Text(
+                      "DateM8 is a modern matchmaking app designed to help students connect "
+                      "with like-minded individuals based on their department, interests, and goals.\n\n"
+                      "Version: 1.0.0\nDeveloped by Team DateM8 💜",
+                    ),
+                    actions: [
+                      TextButton(
+                          onPressed: () => Navigator.pop(_),
+                          child: const Text('Close'))
+                    ],
+                  ),
+                );
+                break;
+              case 'terms':
+                await showDialog(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                    title: const Text("Terms of Service"),
+                    content: const Text(
+                      "By using DateM8, you agree to respect others, keep your information accurate, "
+                      "and follow our community guidelines.",
+                    ),
+                    actions: [
+                      TextButton(
+                          onPressed: () => Navigator.pop(_),
+                          child: const Text('Close'))
+                    ],
+                  ),
+                );
+                break;
+              case 'privacy':
+                await showDialog(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                    title: const Text("Privacy Policy"),
+                    content: const Text(
+                      "DateM8 respects your privacy. We collect minimal data and never share your information "
+                      "without your consent.",
+                    ),
+                    actions: [
+                      TextButton(
+                          onPressed: () => Navigator.pop(_),
+                          child: const Text('Close'))
+                    ],
+                  ),
+                );
+                break;
+              case 'contact':
+                _contactSupport();
+                break;
+              case 'logout':
+                _confirmLogout(context);
+                break;
+            }
+          },
+          itemBuilder: (context) => [
+            PopupMenuItem(
+              value: 'account',
+              child: ListTile(
+                leading: Image.asset('assets/icons/user-account.png',
+                    width: 20, height: 20),
+                title: const Text('Account'),
+              ),
+            ),
+            PopupMenuItem(
+              value: 'about',
+              child: ListTile(
+                leading:
+                    Image.asset('assets/icons/info.png', width: 20, height: 20),
+                title: const Text('About'),
+              ),
+            ),
+            PopupMenuItem(
+              value: 'terms',
+              child: ListTile(
+                leading: Image.asset('assets/icons/terms-of-use.png',
+                    width: 20, height: 20),
+                title: const Text('Terms of Service'),
+              ),
+            ),
+            PopupMenuItem(
+              value: 'privacy',
+              child: ListTile(
+                leading: Image.asset('assets/icons/shield.png',
+                    width: 20, height: 20),
+                title: const Text('Privacy Policy'),
+              ),
+            ),
+            PopupMenuItem(
+              value: 'contact',
+              child: ListTile(
+                leading: Image.asset(
+                  'assets/icons/customer-support.png',
+                  color: const Color.fromARGB(255, 188, 13, 204),
+                  width: 20,
+                  height: 20,
+                ),
+                title: const Text('Contact Support'),
+              ),
+            ),
+            const PopupMenuDivider(),
+            PopupMenuItem(
+              value: 'darkmode',
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.wb_sunny,
@@ -341,29 +344,27 @@ class SettingsIconButton extends StatelessWidget {
                     value: isDark,
                     onChanged: (_) {
                       DarkModeController.toggleTheme();
-                      Navigator.pop(
-                          context); // 👈 Close menu to rebuild it next time
+                      Navigator.pop(context); // close menu to rebuild it
                     },
                   ),
                   Icon(Icons.dark_mode,
                       color: isDark ? Colors.blue : Colors.grey),
                 ],
-              );
-            },
-          ),
-        ),
-
-        const PopupMenuDivider(),
-
-        PopupMenuItem(
-          value: 'logout',
-          child: ListTile(
-            leading:
-                Image.asset('assets/icons/exit.png', width: 20, height: 20),
-            title: const Text('Logout', style: TextStyle(color: Colors.red)),
-          ),
-        ),
-      ],
+              ),
+            ),
+            const PopupMenuDivider(),
+            PopupMenuItem(
+              value: 'logout',
+              child: ListTile(
+                leading:
+                    Image.asset('assets/icons/exit.png', width: 20, height: 20),
+                title:
+                    const Text('Logout', style: TextStyle(color: Colors.red)),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

@@ -3,6 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:datem8/services/cloudinary_service.dart';
 import 'friends_list_tab.dart';
 import 'friend_requests_and_people_tab.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:datem8/widgets/darkmode.dart';
+import 'package:datem8/widgets/setting_widget.dart';
 
 class FriendsPage extends StatefulWidget {
   final CloudinaryService cloudinaryService;
@@ -18,18 +21,14 @@ class _FriendsPageState extends State<FriendsPage>
   late final TabController _tabController;
   late final String currentUserId;
 
-  final List<Tab> _tabs = const [
-    Tab(text: "Friends List"),
-    Tab(text: "Friend Requests"),
-  ];
-
+  final List<String> _tabTitles = ["Friends List", "Friend Requests"];
   late final List<Widget> _tabViews;
 
   @override
   void initState() {
     super.initState();
     currentUserId = FirebaseAuth.instance.currentUser!.uid;
-    _tabController = TabController(length: _tabs.length, vsync: this);
+    _tabController = TabController(length: _tabTitles.length, vsync: this);
     _tabViews = [
       FriendsListTab(currentUserId: currentUserId),
       FriendsRequestsAndPeopleTab(currentUserId: currentUserId),
@@ -44,46 +43,75 @@ class _FriendsPageState extends State<FriendsPage>
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = DarkModeController.themeModeNotifier.value == ThemeMode.dark;
+
+    // THEME COLORS
+    final bgColor = isDark ? const Color(0xFF0F0F0F) : Colors.white;
+    final appBarTextColor = isDark ? Colors.white : Colors.black;
+    final tabBg = isDark ? Colors.grey.shade900 : Colors.grey.withOpacity(0.1);
+    final tabLabelColor = Colors.red;
+    final unselectedTabLabel = isDark ? Colors.white70 : Colors.black54;
+    final tabIndicatorColor = Colors.red.withOpacity(isDark ? 0.25 : 0.1);
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: bgColor,
       appBar: AppBar(
         automaticallyImplyLeading: false,
+        backgroundColor: bgColor,
+        elevation: 0,
         title: Text(
           "Friends",
-          style:
-              theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: theme.appBarTheme.backgroundColor,
-        elevation: 2,
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          labelColor: isDark ? Colors.redAccent : Colors.red,
-          unselectedLabelColor: isDark
-              ? Colors.white70
-              : Colors.black54, // contrast for unselected tabs
-          indicator: UnderlineTabIndicator(
-            borderSide: BorderSide(
-                width: 3.0,
-                color: isDark
-                    ? const Color.fromARGB(255, 160, 26, 107)
-                    : const Color.fromARGB(255, 200, 55, 156)),
-            insets: const EdgeInsets.symmetric(horizontal: 16),
+          style: GoogleFonts.readexPro(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: appBarTextColor,
           ),
-          tabs: _tabs,
+        ),
+        actions: [
+          SettingsIconButton(
+            cloudinaryService: widget.cloudinaryService,
+            userId: currentUserId,
+          ),
+          const SizedBox(width: 12),
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(50),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: tabBg,
+              borderRadius:
+                  const BorderRadius.vertical(bottom: Radius.circular(24)),
+            ),
+            child: TabBar(
+              controller: _tabController,
+              isScrollable: true,
+              labelColor: tabLabelColor,
+              unselectedLabelColor: unselectedTabLabel,
+              indicator: BoxDecoration(
+                color: tabIndicatorColor,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              tabs: _tabTitles
+                  .map(
+                    (title) => Tab(
+                      child: Text(
+                        title,
+                        style: GoogleFonts.readexPro(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
         ),
       ),
       body: TabBarView(
         controller: _tabController,
-        children: _tabViews.map((tabView) {
-          return Container(
-            color: theme.scaffoldBackgroundColor,
-            child: tabView,
-          );
-        }).toList(),
+        children: _tabViews,
       ),
     );
   }

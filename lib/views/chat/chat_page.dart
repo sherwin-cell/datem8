@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:intl/intl.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'chat_conversation_page.dart';
 import 'package:datem8/services/cloudinary_service.dart';
 import 'chat_actions.dart';
@@ -134,12 +135,13 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text("User Blocked"),
-        content: Text("Do you want to unblock $name?"),
+        title: Text("User Blocked", style: GoogleFonts.readexPro()),
+        content: Text("Do you want to unblock $name?",
+            style: GoogleFonts.readexPro()),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel")),
+              child: Text("Cancel", style: GoogleFonts.readexPro())),
           TextButton(
             onPressed: () async {
               final currentUserId = _currentUserId;
@@ -153,7 +155,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
               }
               Navigator.pop(context);
             },
-            child: const Text("Unblock"),
+            child: Text("Unblock", style: GoogleFonts.readexPro()),
           ),
         ],
       ),
@@ -225,7 +227,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Messages"),
+        title: Text("Messages", style: GoogleFonts.readexPro()),
         automaticallyImplyLeading: false,
       ),
       body: Column(
@@ -235,13 +237,15 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
             padding: const EdgeInsets.all(8.0),
             child: TextField(
               controller: _searchController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: "Search",
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(
+                hintStyle: GoogleFonts.readexPro(),
+                prefixIcon: const Icon(Icons.search),
+                border: const OutlineInputBorder(
                   borderRadius: BorderRadius.all(Radius.circular(12)),
                 ),
               ),
+              style: GoogleFonts.readexPro(),
               onChanged: (value) =>
                   setState(() => _searchText = value.toLowerCase()),
             ),
@@ -256,7 +260,9 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                   return const Center(child: CircularProgressIndicator());
                 final friendIds = snapshot.data!.docs.map((e) => e.id).toList();
                 if (friendIds.isEmpty)
-                  return const Center(child: Text("No friends yet"));
+                  return Center(
+                      child: Text("No friends yet",
+                          style: GoogleFonts.readexPro()));
 
                 return ListView.builder(
                   scrollDirection: Axis.horizontal,
@@ -332,7 +338,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                                           name,
                                           maxLines: 1,
                                           textAlign: TextAlign.center,
-                                          style: TextStyle(
+                                          style: GoogleFonts.readexPro(
                                             fontSize: 12,
                                             color: isBlocked
                                                 ? Colors.red
@@ -366,7 +372,9 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
               builder: (context, snapshot) {
                 if (!snapshot.hasData ||
                     snapshot.data!.snapshot.value == null) {
-                  return const Center(child: Text("No recent chats"));
+                  return Center(
+                      child: Text("No recent chats",
+                          style: GoogleFonts.readexPro()));
                 }
 
                 final rawData =
@@ -392,7 +400,9 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                 chats.sort((a, b) =>
                     (b['timestamp'] ?? 0).compareTo(a['timestamp'] ?? 0));
                 if (chats.isEmpty)
-                  return const Center(child: Text("No recent chats"));
+                  return Center(
+                      child: Text("No recent chats",
+                          style: GoogleFonts.readexPro()));
 
                 return ListView.builder(
                   itemCount: chats.length,
@@ -412,7 +422,9 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                       stream: usersRef.doc(friendId).snapshots(),
                       builder: (context, userSnap) {
                         if (!userSnap.hasData || !userSnap.data!.exists)
-                          return const ListTile(title: Text("Unknown user"));
+                          return ListTile(
+                              title: Text("Unknown user",
+                                  style: GoogleFonts.readexPro()));
                         final user =
                             userSnap.data!.data() as Map<String, dynamic>? ??
                                 {};
@@ -451,7 +463,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                                 ],
                               ),
                               title: Text(name,
-                                  style: TextStyle(
+                                  style: GoogleFonts.readexPro(
                                       color: isBlocked
                                           ? Colors.red
                                           : Colors.black)),
@@ -459,13 +471,13 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                                 lastMsg == "[Image]" ? "[Image]" : lastMsg,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
+                                style: GoogleFonts.readexPro(
                                     color:
                                         isBlocked ? Colors.red : Colors.grey),
                               ),
                               trailing: Text(
                                 _formatTime(chat['timestamp']),
-                                style: TextStyle(
+                                style: GoogleFonts.readexPro(
                                     fontSize: 12,
                                     color:
                                         isBlocked ? Colors.red : Colors.grey),
