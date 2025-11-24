@@ -216,6 +216,20 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
     return DateFormat('MMM d').format(date);
   }
 
+  Color _textColor(BuildContext context, {bool isBlocked = false}) {
+    if (isBlocked) return Colors.red;
+    return Theme.of(context).brightness == Brightness.dark
+        ? Colors.white
+        : Colors.black;
+  }
+
+  Color _subtitleColor(BuildContext context, {bool isBlocked = false}) {
+    if (isBlocked) return Colors.red;
+    return Theme.of(context).brightness == Brightness.dark
+        ? Colors.grey[300]!
+        : Colors.grey;
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentUserId = _currentUserId;
@@ -252,13 +266,14 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
               controller: _searchController,
               decoration: InputDecoration(
                 hintText: "Search friends or chats",
-                hintStyle: GoogleFonts.readexPro(),
-                prefixIcon: const Icon(Icons.search),
+                hintStyle:
+                    GoogleFonts.readexPro(color: _subtitleColor(context)),
+                prefixIcon: Icon(Icons.search, color: _subtitleColor(context)),
                 border: const OutlineInputBorder(
                   borderRadius: BorderRadius.all(Radius.circular(12)),
                 ),
               ),
-              style: GoogleFonts.readexPro(),
+              style: GoogleFonts.readexPro(color: _textColor(context)),
               onChanged: (value) =>
                   setState(() => _searchText = value.toLowerCase()),
             ),
@@ -275,7 +290,8 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                 if (friendIds.isEmpty)
                   return Center(
                       child: Text("No friends added yet",
-                          style: GoogleFonts.readexPro()));
+                          style: GoogleFonts.readexPro(
+                              color: _subtitleColor(context))));
 
                 return ListView.builder(
                   scrollDirection: Axis.horizontal,
@@ -352,11 +368,9 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                                           maxLines: 1,
                                           textAlign: TextAlign.center,
                                           style: GoogleFonts.readexPro(
-                                            fontSize: 12,
-                                            color: isBlocked
-                                                ? Colors.red
-                                                : Colors.black,
-                                          ),
+                                              fontSize: 12,
+                                              color: _textColor(context,
+                                                  isBlocked: isBlocked)),
                                         ),
                                       ),
                                     ),
@@ -387,7 +401,8 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                     snapshot.data!.snapshot.value == null) {
                   return Center(
                       child: Text("No recent chats",
-                          style: GoogleFonts.readexPro()));
+                          style: GoogleFonts.readexPro(
+                              color: _subtitleColor(context))));
                 }
 
                 final rawData =
@@ -415,7 +430,8 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                 if (chats.isEmpty)
                   return Center(
                       child: Text("No recent chats",
-                          style: GoogleFonts.readexPro()));
+                          style: GoogleFonts.readexPro(
+                              color: _subtitleColor(context))));
 
                 return ListView.builder(
                   itemCount: chats.length,
@@ -437,7 +453,8 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                         if (!userSnap.hasData || !userSnap.data!.exists)
                           return ListTile(
                               title: Text("Unknown user",
-                                  style: GoogleFonts.readexPro()));
+                                  style: GoogleFonts.readexPro(
+                                      color: _textColor(context))));
                         final user =
                             userSnap.data!.data() as Map<String, dynamic>? ??
                                 {};
@@ -477,23 +494,22 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver {
                               ),
                               title: Text(name,
                                   style: GoogleFonts.readexPro(
-                                      color: isBlocked
-                                          ? Colors.red
-                                          : Colors.black)),
+                                      color: _textColor(context,
+                                          isBlocked: isBlocked))),
                               subtitle: Text(
                                 lastMsg == "[Image]" ? "[Image]" : lastMsg,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.readexPro(
-                                    color:
-                                        isBlocked ? Colors.red : Colors.grey),
+                                    color: _subtitleColor(context,
+                                        isBlocked: isBlocked)),
                               ),
                               trailing: Text(
                                 _formatTime(chat['timestamp']),
                                 style: GoogleFonts.readexPro(
                                     fontSize: 12,
-                                    color:
-                                        isBlocked ? Colors.red : Colors.grey),
+                                    color: _subtitleColor(context,
+                                        isBlocked: isBlocked)),
                               ),
                               onTap: () {
                                 if (isBlocked) {
