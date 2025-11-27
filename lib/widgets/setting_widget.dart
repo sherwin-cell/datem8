@@ -174,7 +174,6 @@ class SettingsIconButton extends StatelessWidget {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Highlighted email box
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
@@ -201,7 +200,6 @@ class SettingsIconButton extends StatelessWidget {
                 ],
               ),
             ),
-            // Options
             ListTile(
               leading: Icon(Icons.edit, color: theme.colorScheme.onSurface),
               title: Text('Edit Profile',
@@ -288,10 +286,6 @@ class SettingsIconButton extends StatelessWidget {
                 await _showSimpleDialog(context, 'Terms of Service',
                     "By using DateM8, you agree to follow our community guidelines and provide accurate information.");
                 break;
-              case 'privacy':
-                await _showSimpleDialog(context, 'Privacy Policy',
-                    "We collect minimal data and never share your information without consent.");
-                break;
               case 'contact':
                 _contactSupport();
                 break;
@@ -306,8 +300,6 @@ class SettingsIconButton extends StatelessWidget {
             _buildMenuItem('about', 'About', 'assets/icons/info.png'),
             _buildMenuItem(
                 'terms', 'Terms of Service', 'assets/icons/terms-of-use.png'),
-            _buildMenuItem(
-                'privacy', 'Privacy Policy', 'assets/icons/shield.png'),
             _buildMenuItem('contact', 'Contact Support',
                 'assets/icons/customer-support.png',
                 iconColor: const Color.fromARGB(255, 188, 13, 204)),

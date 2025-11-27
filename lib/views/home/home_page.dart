@@ -67,13 +67,13 @@ class _HomePageState extends State<HomePage> {
     late Widget page;
     switch (dept) {
       case "CBE":
-        page = const CBEPage();
+        page = CBEPage(cloudinaryService: widget.cloudinaryService);
         break;
       case "CCS":
-        page = const CCSPage();
+        page = CCSPage(cloudinaryService: widget.cloudinaryService);
         break;
       case "CTE":
-        page = const CTEPage();
+        page = CTEPage(cloudinaryService: widget.cloudinaryService);
         break;
       default:
         return;

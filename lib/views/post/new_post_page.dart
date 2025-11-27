@@ -150,14 +150,15 @@ class _NewPostPageState extends State<NewPostPage> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
+      // Fetch user details
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
           .get();
-
       final profilePic = userDoc.data()?['profilePic'] ?? '';
       final name = userDoc.data()?['name'] ?? 'Unknown';
 
+      // Upload images to Cloudinary
       List<String> imageUrls = [];
       for (var image in _images) {
         final uploadedUrl =
@@ -165,14 +166,28 @@ class _NewPostPageState extends State<NewPostPage> {
         if (uploadedUrl != null) imageUrls.add(uploadedUrl);
       }
 
-      await FirebaseFirestore.instance.collection('posts').add({
+      // Add post to Firestore
+      final postRef = await FirebaseFirestore.instance.collection('posts').add({
         'userId': user.uid,
         'name': name,
         'profilePic': profilePic,
         'caption': _captionController.text.trim(),
         'imageUrls': imageUrls,
         'createdAt': FieldValue.serverTimestamp(),
+        'reactions': {}, // initialize empty reactions map
       });
+
+      // Add initial comment (optional)
+      final captionText = _captionController.text.trim();
+      if (captionText.isNotEmpty) {
+        await postRef.collection('comments').add({
+          'userId': user.uid,
+          'name': name,
+          'profilePic': profilePic,
+          'text': captionText,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
 
       if (!mounted) return;
       Navigator.pop(context);

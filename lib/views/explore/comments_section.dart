@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 
 class CommentsSection extends StatefulWidget {
   final String postId;
-
   const CommentsSection({super.key, required this.postId});
 
   @override
@@ -27,9 +26,7 @@ class _CommentsSectionState extends State<CommentsSection> {
   Future<void> _fetchPostOwner() async {
     final doc = await _firestore.collection('posts').doc(widget.postId).get();
     if (doc.exists) {
-      setState(() {
-        _postOwnerId = doc['userId'] as String?;
-      });
+      setState(() => _postOwnerId = doc['userId'] as String?);
     }
   }
 
@@ -47,7 +44,8 @@ class _CommentsSectionState extends State<CommentsSection> {
         .collection('comments')
         .add({
       'userId': user.uid,
-      'name': userData['name'] ?? 'Unknown',
+      'name':
+          "${userData['firstName'] ?? ''} ${userData['lastName'] ?? ''}".trim(),
       'profilePic': userData['profilePic'] ?? '',
       'text': text,
       'createdAt': FieldValue.serverTimestamp(),
@@ -107,16 +105,14 @@ class _CommentsSectionState extends State<CommentsSection> {
   @override
   Widget build(BuildContext context) {
     return FractionallySizedBox(
-      heightFactor: 0.75, // 3/4 screen height
+      heightFactor: 0.75,
       child: Container(
         color: Colors.white,
         child: Column(
           children: [
             const SizedBox(height: 12),
-            const Text(
-              "Comments",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
+            const Text("Comments",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const Divider(height: 8),
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
@@ -127,14 +123,12 @@ class _CommentsSectionState extends State<CommentsSection> {
                     .orderBy('createdAt', descending: true)
                     .snapshots(),
                 builder: (context, snapshot) {
-                  if (!snapshot.hasData) {
+                  if (!snapshot.hasData)
                     return const Center(child: CircularProgressIndicator());
-                  }
 
                   final comments = snapshot.data!.docs;
-                  if (comments.isEmpty) {
+                  if (comments.isEmpty)
                     return const Center(child: Text("No comments yet."));
-                  }
 
                   return ListView.builder(
                     padding: const EdgeInsets.only(bottom: 8),
@@ -173,9 +167,8 @@ class _CommentsSectionState extends State<CommentsSection> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.send, color: Colors.blue),
-                    onPressed: _addComment,
-                  ),
+                      icon: const Icon(Icons.send, color: Colors.blue),
+                      onPressed: _addComment),
                 ],
               ),
             ),

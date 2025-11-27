@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:datem8/services/cloudinary_service.dart';
+import 'package:datem8/widgets/profile_modal.dart';
 
 class CBEPage extends StatelessWidget {
-  const CBEPage({super.key});
+  final CloudinaryService cloudinaryService;
+
+  const CBEPage({super.key, required this.cloudinaryService});
 
   @override
   Widget build(BuildContext context) {
@@ -59,7 +63,7 @@ class CBEPage extends StatelessWidget {
                             children: [
                               const SizedBox(height: 4),
                               Text(
-                                "Meet our CBE students below ",
+                                "Meet our CBE students below",
                                 style: GoogleFonts.readexPro(
                                   color: Colors.white70,
                                   fontSize: 14,
@@ -159,6 +163,13 @@ class CBEPage extends StatelessWidget {
                             color: isDark ? Colors.white70 : Colors.black54,
                           ),
                         ),
+                        onTap: () {
+                          showProfileModal(
+                            context,
+                            userData: {...user, 'uid': users[index].id},
+                            cloudinaryService: cloudinaryService,
+                          );
+                        },
                       ),
                     );
                   },

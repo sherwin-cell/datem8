@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:datem8/services/cloudinary_service.dart';
+import 'package:datem8/widgets/profile_modal.dart';
 
 class CTEPage extends StatelessWidget {
-  const CTEPage({super.key});
+  final CloudinaryService cloudinaryService;
+
+  const CTEPage({super.key, required this.cloudinaryService});
 
   @override
   Widget build(BuildContext context) {
@@ -14,7 +18,7 @@ class CTEPage extends StatelessWidget {
       backgroundColor: theme.scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
-          // SliverAppBar with Hero image + gradient overlay
+          // AppBar with hero image + gradient overlay
           SliverAppBar(
             pinned: true,
             expandedHeight: 220,
@@ -58,7 +62,7 @@ class CTEPage extends StatelessWidget {
                             children: [
                               const SizedBox(height: 4),
                               Text(
-                                "Meet our CTE students below ",
+                                "Meet our CTE students below",
                                 style: GoogleFonts.readexPro(
                                   color: Colors.white70,
                                   fontSize: 14,
@@ -160,6 +164,13 @@ class CTEPage extends StatelessWidget {
                             color: isDark ? Colors.white70 : Colors.black54,
                           ),
                         ),
+                        onTap: () {
+                          showProfileModal(
+                            context,
+                            userData: {...user, 'uid': users[index].id},
+                            cloudinaryService: cloudinaryService,
+                          );
+                        },
                       ),
                     );
                   },

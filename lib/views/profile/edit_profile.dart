@@ -35,6 +35,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
   String? _profilePicUrl;
   File? _newProfilePic;
 
+  final List<String> genderOptions = ["Male", "Female", "Other"];
+  final List<String> interestedOptions = ["Male", "Female", "Both"];
+
   @override
   void initState() {
     super.initState();
@@ -58,8 +61,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
         _age = data['age'];
         _course = data['course'] ?? '';
         _department = data['department'] ?? '';
-        _gender = data['gender'];
-        _interestedIn = data['interestedIn'];
+        _gender = data['gender'] ?? genderOptions.first;
+        _interestedIn = data['interestedIn'] ?? interestedOptions.last;
         _interests = List<String>.from(data['interests'] ?? []);
         _profilePicUrl = data['profilePic'] ?? '';
         _isLoading = false;
@@ -141,6 +144,41 @@ class _EditProfilePageState extends State<EditProfilePage> {
           validator: validator,
           onSaved: onSaved,
           style: const TextStyle(color: Colors.black),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: Colors.grey.shade200,
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none),
+            contentPadding:
+                const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Widget _dropdownField({
+    required String label,
+    required String? value,
+    required List<String> options,
+    required void Function(String?) onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style: GoogleFonts.readexPro(
+                fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey)),
+        const SizedBox(height: 6),
+        DropdownButtonFormField<String>(
+          value: value,
+          items: options
+              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+              .toList(),
+          onChanged: onChanged,
+          validator: (v) => v == null || v.isEmpty ? "Required" : null,
           decoration: InputDecoration(
             filled: true,
             fillColor: Colors.grey.shade200,
@@ -267,6 +305,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         value: _bio,
                         maxLines: 3,
                         onSaved: (v) => _bio = v,
+                      ),
+                      _dropdownField(
+                        label: "Gender",
+                        value: _gender,
+                        options: genderOptions,
+                        onChanged: (v) => setState(() => _gender = v),
+                      ),
+                      _dropdownField(
+                        label: "Interested In",
+                        value: _interestedIn,
+                        options: interestedOptions,
+                        onChanged: (v) => setState(() => _interestedIn = v),
                       ),
                       _inputField(
                         label: "Interests (comma separated)",
