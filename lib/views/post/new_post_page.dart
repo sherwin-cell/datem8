@@ -10,6 +10,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 class NewPostPage extends StatefulWidget {
   final CloudinaryService cloudinaryService;
+
   const NewPostPage({super.key, required this.cloudinaryService});
 
   @override
@@ -35,6 +36,17 @@ class _NewPostPageState extends State<NewPostPage> {
   @override
   void initState() {
     super.initState();
+    _startPlaceholderTimer();
+  }
+
+  @override
+  void dispose() {
+    _captionController.dispose();
+    _placeholderTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startPlaceholderTimer() {
     _placeholderTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       if (_captionController.text.isEmpty) {
         setState(() {
@@ -45,15 +57,9 @@ class _NewPostPageState extends State<NewPostPage> {
     });
   }
 
-  @override
-  void dispose() {
-    _captionController.dispose();
-    _placeholderTimer?.cancel();
-    super.dispose();
-  }
-
   Future<void> _showImageSourceDialog() async {
     final theme = Theme.of(context);
+
     showModalBottomSheet(
       context: context,
       backgroundColor: theme.colorScheme.background,
@@ -63,21 +69,15 @@ class _NewPostPageState extends State<NewPostPage> {
       builder: (context) => SafeArea(
         child: Wrap(
           children: [
-            ListTile(
-              leading: Icon(Icons.photo_library, color: theme.iconTheme.color),
-              title: Text('Gallery', style: theme.textTheme.bodyMedium),
-              onTap: () {
-                Navigator.of(context).pop();
-                _pickImagesFromGallery();
-              },
+            _buildImageSourceTile(
+              icon: Icons.photo_library,
+              label: "Gallery",
+              onTap: _pickImagesFromGallery,
             ),
-            ListTile(
-              leading: Icon(Icons.camera_alt, color: theme.iconTheme.color),
-              title: Text('Camera', style: theme.textTheme.bodyMedium),
-              onTap: () {
-                Navigator.of(context).pop();
-                _pickImageFromCamera();
-              },
+            _buildImageSourceTile(
+              icon: Icons.camera_alt,
+              label: "Camera",
+              onTap: _pickImageFromCamera,
             ),
           ],
         ),
@@ -85,16 +85,32 @@ class _NewPostPageState extends State<NewPostPage> {
     );
   }
 
+  ListTile _buildImageSourceTile({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    return ListTile(
+      leading: Icon(icon, color: theme.iconTheme.color),
+      title: Text(label, style: theme.textTheme.bodyMedium),
+      onTap: () {
+        Navigator.of(context).pop();
+        onTap();
+      },
+    );
+  }
+
   Future<void> _pickImagesFromGallery() async {
     try {
       final pickedFiles = await _picker.pickMultiImage();
       if (!mounted || pickedFiles.isEmpty) return;
-      setState(
-          () => _images.addAll(pickedFiles.map((file) => File(file.path))));
+
+      setState(() {
+        _images.addAll(pickedFiles.map((file) => File(file.path)));
+      });
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Error picking images: $e")));
+      _showSnack("Error picking images: $e");
     }
   }
 
@@ -102,19 +118,24 @@ class _NewPostPageState extends State<NewPostPage> {
     try {
       final pickedFile = await _picker.pickImage(source: ImageSource.camera);
       if (!mounted || pickedFile == null) return;
+
       setState(() => _images.add(File(pickedFile.path)));
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Error taking photo: $e")));
+      _showSnack("Error taking photo: $e");
     }
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _confirmDiscard() async {
     final theme = Theme.of(context);
     final discard = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (_) => AlertDialog(
         backgroundColor: theme.colorScheme.background,
         title: Text("Discard Post?", style: theme.textTheme.titleMedium),
         content: Text(
@@ -124,7 +145,7 @@ class _NewPostPageState extends State<NewPostPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text("No", style: TextStyle(color: Colors.pinkAccent)),
+            child: Text("No", style: const TextStyle(color: Colors.pinkAccent)),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
@@ -134,13 +155,12 @@ class _NewPostPageState extends State<NewPostPage> {
       ),
     );
 
-    if (discard == true) Navigator.of(context).pop();
+    if (discard == true && mounted) Navigator.of(context).pop();
   }
 
   Future<void> _submitPost() async {
     if (_images.isEmpty && _captionController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please add an image or caption")));
+      _showSnack("Please add an image or caption");
       return;
     }
 
@@ -150,51 +170,37 @@ class _NewPostPageState extends State<NewPostPage> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
-      // Fetch user details
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
           .get();
-      final profilePic = userDoc.data()?['profilePic'] ?? '';
-      final name = userDoc.data()?['name'] ?? 'Unknown';
+      final userData = userDoc.data() ?? {};
+      final profilePic = userData['profilePic'] ?? '';
+      final name = userData['name'] ?? 'Unknown';
 
       // Upload images to Cloudinary
       List<String> imageUrls = [];
       for (var image in _images) {
-        final uploadedUrl =
+        final url =
             await widget.cloudinaryService.uploadImage(image, folder: 'posts');
-        if (uploadedUrl != null) imageUrls.add(uploadedUrl);
+        if (url != null) imageUrls.add(url);
       }
 
-      // Add post to Firestore
-      final postRef = await FirebaseFirestore.instance.collection('posts').add({
+      // Create post
+      await FirebaseFirestore.instance.collection('posts').add({
         'userId': user.uid,
         'name': name,
         'profilePic': profilePic,
         'caption': _captionController.text.trim(),
         'imageUrls': imageUrls,
         'createdAt': FieldValue.serverTimestamp(),
-        'reactions': {}, // initialize empty reactions map
+        'reactions': {},
       });
-
-      // Add initial comment (optional)
-      final captionText = _captionController.text.trim();
-      if (captionText.isNotEmpty) {
-        await postRef.collection('comments').add({
-          'userId': user.uid,
-          'name': name,
-          'profilePic': profilePic,
-          'text': captionText,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-      }
 
       if (!mounted) return;
       Navigator.pop(context);
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Failed to post: $e")));
+      _showSnack("Failed to post: $e");
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -202,6 +208,7 @@ class _NewPostPageState extends State<NewPostPage> {
 
   Widget _buildImagePreview() {
     final theme = Theme.of(context);
+
     if (_images.isEmpty) {
       return GestureDetector(
         onTap: _showImageSourceDialog,
@@ -212,29 +219,31 @@ class _NewPostPageState extends State<NewPostPage> {
             borderRadius: BorderRadius.circular(16),
           ),
           child: Center(
-            child: Icon(Icons.add_a_photo,
-                size: 50,
-                color: theme.colorScheme.onBackground.withOpacity(0.5)),
+            child: Icon(
+              Icons.add_a_photo,
+              size: 50,
+              color: theme.colorScheme.onBackground.withOpacity(0.5),
+            ),
           ),
         ),
       );
     }
 
     return Column(
-      children: _images.map((image) {
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12.0),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Image.file(
-              image,
-              width: double.infinity,
-              height: 240,
-              fit: BoxFit.cover,
-            ),
-          ),
-        );
-      }).toList(),
+      children: _images
+          .map((image) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.file(
+                    image,
+                    width: double.infinity,
+                    height: 240,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ))
+          .toList(),
     );
   }
 
@@ -262,10 +271,8 @@ class _NewPostPageState extends State<NewPostPage> {
             actions: [
               TextButton(
                 onPressed: _confirmDiscard,
-                child: const Text(
-                  "Discard",
-                  style: TextStyle(color: Colors.red, fontSize: 16),
-                ),
+                child:
+                    const Text("Discard", style: TextStyle(color: Colors.red)),
               ),
             ],
           ),
@@ -275,6 +282,7 @@ class _NewPostPageState extends State<NewPostPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // Caption input
                   Container(
                     padding: const EdgeInsets.symmetric(
                         vertical: 14, horizontal: 16),
@@ -296,8 +304,12 @@ class _NewPostPageState extends State<NewPostPage> {
                     ),
                   ),
                   const SizedBox(height: 24),
+
+                  // Image preview
                   _buildImagePreview(),
                   const SizedBox(height: 24),
+
+                  // Post button
                   _isLoading
                       ? const Center(
                           child: CircularProgressIndicator(
@@ -313,11 +325,9 @@ class _NewPostPageState extends State<NewPostPage> {
                                   const Color.fromARGB(255, 225, 217, 223),
                               elevation: 2,
                             ),
-                            child: Text(
-                              "Post",
-                              style: GoogleFonts.readexPro(
-                                  fontSize: 18, fontWeight: FontWeight.bold),
-                            ),
+                            child: Text("Post",
+                                style: GoogleFonts.readexPro(
+                                    fontSize: 18, fontWeight: FontWeight.bold)),
                           ),
                         ),
                 ],
