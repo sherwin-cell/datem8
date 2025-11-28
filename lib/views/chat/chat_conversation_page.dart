@@ -121,22 +121,25 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     });
   }
 
-  // ================= Start Call =================
   Future<void> _startCall({required bool isVideo}) async {
     if (_isBlocked) return;
 
+    // Push CallPage and wait for duration
     final duration = await Navigator.push<int>(
       context,
       MaterialPageRoute(
         builder: (_) => CallPage(
           callID: widget.chatId,
-          userID: widget.currentUserId,
-          userName: widget.otherUserName,
+          currentUserID: widget.currentUserId,
+          otherUserID: widget.otherUserId,
+          otherUserName: widget.otherUserName,
           isVideoCall: isVideo,
+          cloudinaryService: widget.cloudinaryService,
         ),
       ),
     );
 
+    // Send call message if duration is returned
     if (duration != null) {
       await _sendCallMessage(isVideo: isVideo, duration: duration);
     }

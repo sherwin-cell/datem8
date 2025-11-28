@@ -1,18 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:zego_uikit_prebuilt_call/zego_uikit_prebuilt_call.dart';
+import 'package:datem8/services/cloudinary_service.dart';
 
 class CallPage extends StatefulWidget {
   final String callID;
-  final String userID;
-  final String userName;
+  final String currentUserID;
+  final String otherUserID;
+  final String otherUserName;
   final bool isVideoCall;
+  final CloudinaryService cloudinaryService;
 
   const CallPage({
     super.key,
     required this.callID,
-    required this.userID,
-    required this.userName,
+    required this.currentUserID,
+    required this.otherUserID,
+    required this.otherUserName,
     required this.isVideoCall,
+    required this.cloudinaryService,
   });
 
   @override
@@ -31,8 +36,6 @@ class _CallPageState extends State<CallPage> {
   @override
   void dispose() {
     _stopwatch.stop();
-    // When page is disposed, pop with elapsed time
-    Navigator.pop(context, _stopwatch.elapsed.inSeconds);
     super.dispose();
   }
 
@@ -47,14 +50,17 @@ class _CallPageState extends State<CallPage> {
         appID: 624522157,
         appSign:
             "9e0e20a7f50c97b7487134a23ad3c79b9febe175190e5e4269465ac4f667edc2",
-        userID: widget.userID,
-        userName: widget.userName,
+        userID: widget.currentUserID,
+        userName: widget.otherUserName,
         callID: widget.callID,
         config: config,
         events: ZegoUIKitPrebuiltCallEvents(
           onCallEnd: (ZegoCallEndEvent event, VoidCallback defaultAction) {
-            defaultAction(); // execute default behaviour (pop by default)
-            // We already have elapsed time via stopwatch
+            // Don't call defaultAction() here — Zego handles ending the call
+            // Just return the duration to the previous screen
+            if (mounted) {
+              Navigator.pop(context, _stopwatch.elapsed.inSeconds);
+            }
           },
         ),
       ),
